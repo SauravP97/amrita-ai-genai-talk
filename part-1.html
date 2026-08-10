@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Hook | AI Engineer's Playbook</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    animation: {
+                        'gradient-x': 'gradient-x 15s ease infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                    },
+                    keyframes: {
+                        'gradient-x': {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            },
+                        },
+                        'float': {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        'fadeInUp': {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617; /* slate-950 */
+            color: #f8fafc; /* slate-50 */
+            overflow-x: hidden;
+        }
+        .code-highlight .keyword { color: #c678dd; }
+        .code-highlight .string { color: #98c379; }
+        .code-highlight .function { color: #61afef; }
+        .code-highlight .comment { color: #7f848e; font-style: italic; }
+        .code-highlight .property { color: #d19a66; }
+        
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Custom Scrollbar for code blocks */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 1); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 1); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1); 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500/30">
+
+    <!-- Ambient Background Elements -->
+    <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-cyan-900/20 blur-[120px] mix-blend-screen"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-900/20 blur-[120px] mix-blend-screen"></div>
+    </div>
+
+    <!-- Header / Title -->
+    <header class="relative z-10 w-full p-6 md:p-12 text-center opacity-0 animate-fade-in-up" style="animation-delay: 0.1s;">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-cyan-400 text-sm font-semibold tracking-wide mb-6 uppercase">
+            <i data-lucide="cpu" class="w-4 h-4"></i> Session 01
+        </div>
+        <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-4">
+            The <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 animate-gradient-x">AI Engineer's</span> Playbook
+        </h1>
+        <p class="text-xl md:text-3xl text-slate-400 font-light tracking-wide">
+            From Consumer to Creator
+        </p>
+    </header>
+
+    <!-- Main Interactive Area -->
+    <main class="relative z-10 flex-grow flex flex-col items-center justify-center p-4 w-full max-w-6xl mx-auto opacity-0 animate-fade-in-up" style="animation-delay: 0.3s;">
+        
+        <!-- The Question -->
+        <div class="text-center mb-10 max-w-2xl">
+            <p class="text-xl md:text-2xl text-slate-300 leading-relaxed" id="dynamic-text">
+                "How many of you used AI this week?"
+            </p>
+            <p class="text-sm text-slate-500 mt-4 font-mono transition-opacity duration-500 opacity-0" id="sub-text">
+                Now, how many of you know how to build it?
+            </p>
+        </div>
+
+        <!-- Interactive Toggle Container -->
+        <div class="w-full flex flex-col md:flex-row gap-8 items-stretch justify-center perspective-1000">
+            
+            <!-- Consumer Mode (Left) -->
+            <div id="consumer-card" class="glass-panel rounded-2xl p-1 w-full md:w-1/2 transition-all duration-700 transform md:hover:scale-[1.02] cursor-pointer group shadow-2xl shadow-black/50 border border-slate-700/50 relative overflow-hidden" onclick="activateCreatorMode()">
+                <!-- Active Indicator -->
+                <div id="consumer-active-bar" class="absolute top-0 left-0 w-full h-1 bg-cyan-500 transition-opacity duration-300"></div>
+                
+                <div class="p-6 h-full flex flex-col">
+                    <div class="flex items-center justify-between mb-6 border-b border-slate-700/50 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 text-slate-400 group-hover:text-cyan-400 transition-colors">
+                                <i data-lucide="user"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-lg">Consumer Mode</h3>
+                                <p class="text-xs text-slate-400">Using the interface</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 bg-slate-800 rounded-full text-xs font-mono text-slate-300 border border-slate-700">Gemini</span>
+                    </div>
+
+                    <!-- Mock Chat Interface -->
+                    <div class="flex-grow flex flex-col gap-4 font-sans text-sm">
+                        <div class="flex gap-3 items-end">
+                            <div class="bg-indigo-600/20 border border-indigo-500/30 text-slate-200 p-3 rounded-2xl rounded-bl-sm max-w-[85%]">
+                                Write a python script to sort a list of numbers.
+                            </div>
+                        </div>
+                        <div class="flex gap-3 items-end flex-row-reverse">
+                            <div class="w-8 h-8 rounded-full bg-cyan-900/50 flex flex-shrink-0 items-center justify-center border border-cyan-700/50">
+                                <i data-lucide="bot" class="w-4 h-4 text-cyan-400"></i>
+                            </div>
+                            <div class="bg-slate-800/80 border border-slate-700 p-3 rounded-2xl rounded-br-sm max-w-[90%] text-slate-300 text-left">
+                                <p class="text-xs mb-2 text-slate-400">Here is a simple way to sort a list:</p>
+                                <pre class="code-highlight bg-[#1e1e1e] p-2 rounded-md font-mono text-[10px] sm:text-xs border border-slate-700/50 overflow-x-auto"><code><span class="property">nums</span> = [<span class="property">3</span>, <span class="property">1</span>, <span class="property">4</span>, <span class="property">5</span>]
+<span class="property">nums</span>.<span class="function">sort</span>()
+<span class="function">print</span>(<span class="property">nums</span>)</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-700/50 text-center">
+                        <button class="text-cyan-400 text-sm font-semibold flex items-center justify-center gap-2 w-full hover:text-cyan-300 transition-colors" id="btn-reveal">
+                            Reveal what happens underneath <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Creator Mode (Right) -->
+            <div id="creator-card" class="glass-panel rounded-2xl w-full md:w-1/2 transition-all duration-700 transform opacity-50 grayscale scale-95 flex flex-col overflow-hidden relative border border-slate-800 pointer-events-none">
+                <!-- Active Indicator -->
+                <div id="creator-active-bar" class="absolute top-0 left-0 w-full h-1 bg-emerald-500 opacity-0 transition-opacity duration-300"></div>
+
+                <!-- Window controls -->
+                <div class="bg-slate-900/80 px-4 py-3 flex items-center gap-2 border-b border-slate-800">
+                    <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                    <span class="ml-4 text-xs font-mono text-slate-500">api_request.py</span>
+                </div>
+
+                <div class="p-6 h-full flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-emerald-900/30 flex items-center justify-center border border-emerald-700/50 text-emerald-400">
+                                <i data-lucide="terminal"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-lg text-white">Creator Mode</h3>
+                                <p class="text-xs text-slate-400">Building the engine</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Code Snippet -->
+                    <div class="flex-grow bg-[#1e1e1e] rounded-xl p-4 overflow-x-auto text-sm font-mono leading-relaxed border border-slate-800 shadow-inner">
+<pre class="code-highlight"><code><span class="keyword">import</span> os
+<span class="keyword">from</span> google <span class="keyword">import</span> genai
+
+<span class="comment"># 1. Initialize the Engine</span>
+client = genai.<span class="function">Client</span>(api_key=os.environ.get(<span class="string">"API_KEY"</span>))
+
+<span class="comment"># 2. Build the System Architecture</span>
+response = client.models.<span class="function">generate_content</span>(
+    model=<span class="string">"gemini-2.5-flash"</span>,
+    contents=<span class="string">"Write a python script..."</span>,
+    config={
+        <span class="property">"system_instruction"</span>: <span class="string">"You are an expert coder."</span>,
+        <span class="property">"temperature"</span>: <span class="property">0.2</span>
+    }
+)
+
+<span class="function">print</span>(response.text)</code></pre>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="w-full max-w-6xl mt-32 opacity-0 animate-fade-in-up relative" style="animation-delay: 0.7s;">
+            <!-- Connector Line -->
+            <div class="absolute left-1/2 top-[-80px] w-px h-16 bg-gradient-to-b from-emerald-500/0 via-fuchsia-500/50 to-fuchsia-500/10 -translate-x-1/2"></div>
+            
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-fuchsia-400 text-sm font-semibold tracking-wide mb-4 uppercase shadow-[0_0_15px_rgba(232,121,249,0.2)]">
+                    <i data-lucide="image" class="w-4 h-4"></i> Multimodal AI
+                </div>
+                <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-4 text-white">Code to Canvas</h2>
+                <p class="text-slate-400 text-lg">It's not just text. Here is how we generate pixels using code.</p>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-8 items-stretch perspective-1000">
+                <!-- Code Side -->
+                <div class="glass-panel rounded-2xl w-full md:w-1/2 p-6 flex flex-col border border-slate-700/50 shadow-2xl shadow-black/50 hover:shadow-fuchsia-900/10 transition-shadow duration-500">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-fuchsia-900/30 flex items-center justify-center border border-fuchsia-700/50 text-fuchsia-400">
+                                <i data-lucide="file-code-2"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-lg text-white">The Script</h3>
+                                <p class="text-xs text-slate-400">generate_image.py</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow bg-[#1e1e1e] rounded-xl p-4 overflow-x-auto text-sm font-mono leading-relaxed border border-slate-800 shadow-inner">
+<pre class="code-highlight"><code><span class="keyword">from</span> google <span class="keyword">import</span> genai
+
+client = genai.<span class="function">Client</span>()
+
+<span class="comment"># Request an image generation</span>
+result = client.models.<span class="function">generate_images</span>(
+    model=<span class="string">"imagen-3.0-generate-002"</span>,
+    prompt=<span class="string">"A futuristic cyberpunk city with flying cars and neon lights, highly detailed 3d render"</span>,
+    config={<span class="property">"number_of_images"</span>: <span class="property">1</span>, <span class="property">"aspect_ratio"</span>: <span class="string">"1:1"</span>}
+)
+
+<span class="comment"># Get the generated image</span>
+<span class="function">print</span>(<span class="string">"Image Generated successfully!"</span>)
+image_bytes = result.generated_images[0].image.image_bytes</code></pre>
+                    </div>
+                </div>
+
+                <!-- Result Side -->
+                <div class="glass-panel rounded-2xl w-full md:w-1/2 p-2 flex flex-col border border-slate-700/50 shadow-2xl shadow-fuchsia-900/20 group relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-fuchsia-500 opacity-50"></div>
+                    <div class="relative w-full h-full rounded-xl overflow-hidden bg-slate-900 min-h-[300px]">
+                        <!-- Using an abstract, AI-style stock photo as the sample result -->
+                        <img src="./media/futuristic-city.png" alt="AI Generated Cyberpunk City" class="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105" onerror="this.src='https://placehold.co/1024x1024/1e293b/f8fafc?text=AI+Generated+Image'">
+                        
+                        <!-- Overlay tag -->
+                        <div class="absolute bottom-4 left-4 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2 backdrop-blur-md">
+                            <div class="w-2 h-2 rounded-full bg-fuchsia-400 animate-pulse shadow-[0_0_8px_rgba(232,121,249,1)]"></div>
+                            <span class="text-xs font-mono text-slate-200">output_url.png</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer / The Transition -->
+    <footer class="relative z-10 w-full p-6 text-center opacity-0 animate-fade-in-up" style="animation-delay: 0.9s;">
+        <div id="era-text" class="text-slate-500 transition-all duration-700 transform translate-y-4 opacity-0 text-lg md:text-xl font-medium tracking-wide">
+            Welcome to the era of <span class="text-emerald-400 font-bold border-b border-emerald-400/30 pb-1">building with AI.</span>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons safely once all external resources have loaded
+        window.addEventListener('load', () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            } else {
+                console.warn("Lucide library delayed, retrying...");
+                setTimeout(() => {
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }, 1000);
+            }
+        });
+
+        let isCreatorMode = false;
+
+        function activateCreatorMode() {
+            if (isCreatorMode) return; // Prevent double clicks
+            isCreatorMode = true;
+
+            const consumerCard = document.getElementById('consumer-card');
+            const creatorCard = document.getElementById('creator-card');
+            const dynamicText = document.getElementById('dynamic-text');
+            const subText = document.getElementById('sub-text');
+            const eraText = document.getElementById('era-text');
+            const btnReveal = document.getElementById('btn-reveal');
+            
+            const consumerActiveBar = document.getElementById('consumer-active-bar');
+            const creatorActiveBar = document.getElementById('creator-active-bar');
+
+            // Update Text
+            subText.classList.remove('opacity-0');
+            dynamicText.innerHTML = "That is the gap we are going to close today.";
+            dynamicText.classList.add('text-white', 'font-semibold');
+            
+            // Dim Consumer Mode
+            consumerCard.classList.remove('md:hover:scale-[1.02]', 'shadow-2xl', 'border-slate-700/50', 'cursor-pointer');
+            consumerCard.classList.add('opacity-50', 'scale-95', 'grayscale', 'pointer-events-none', 'border-slate-800');
+            consumerActiveBar.classList.add('opacity-0');
+            btnReveal.classList.add('opacity-0');
+
+            // Highlight Creator Mode
+            creatorCard.classList.remove('opacity-50', 'grayscale', 'scale-95', 'pointer-events-none', 'border-slate-800');
+            creatorCard.classList.add('shadow-2xl', 'shadow-emerald-900/20', 'border-emerald-700/50', 'scale-100');
+            creatorActiveBar.classList.remove('opacity-0');
+
+            // Show final transition text
+            setTimeout(() => {
+                eraText.classList.remove('translate-y-4', 'opacity-0');
+                eraText.classList.add('translate-y-0', 'opacity-100');
+            }, 600);
+        }
+    </script>
+</body>
+</html>
