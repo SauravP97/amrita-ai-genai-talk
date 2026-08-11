@@ -1,8 +1,10 @@
-# Amrita AI - Gen AI Talk (Aug 2026)
+# Amrita School of AI - Gen AI Talk (Aug 2026)
 
 Welcome to the repository for the **Amrita AI - Gen AI Talk** held in August 2026. This repository contains the presentation materials, scripts, and media associated with the session.
 
 ![Banner](./media/banner.jpeg)
+
+---
 
 ## 📁 Repository Structure
 
