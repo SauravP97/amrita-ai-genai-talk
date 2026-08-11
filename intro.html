@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI Talk | Amrita School of AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Space Grotesk', 'monospace'],
+                    },
+                    colors: {
+                        amrita: {
+                            500: '#9b2c2c', // Deep red/maroon hint for Amrita
+                            600: '#742a2a',
+                        },
+                        ai: {
+                            dark: '#0B0F19',
+                            card: '#111827',
+                            border: '#1F2937',
+                            primary: '#3B82F6', // Blue
+                            secondary: '#8B5CF6', // Purple
+                            tertiary: '#EC4899', // Pink
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0B0F19;
+            color: #E5E7EB;
+            overflow-x: hidden;
+        }
+        
+        .text-gradient {
+            background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 50%, #EC4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card-hover-effect {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-hover-effect:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px -15px rgba(139, 92, 246, 0.3);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+
+        .glass-nav {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .topic-number {
+            font-family: 'Space Grotesk', monospace;
+            -webkit-text-stroke: 1px rgba(139, 92, 246, 0.3);
+            color: transparent;
+        }
+        
+        .card-hover-effect:hover .topic-number {
+            color: rgba(139, 92, 246, 0.1);
+            -webkit-text-stroke: 1px rgba(139, 92, 246, 0.8);
+        }
+
+        /* Abstract background elements */
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-purple-500/30">
+
+    <nav class="fixed w-full z-50 glass-nav">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <div class="flex-shrink-0 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 p-[2px]">
+                        <div class="w-full h-full bg-ai-dark rounded-[10px] flex items-center justify-center">
+                            <i class="fa-solid fa-brain text-white text-lg"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="font-bold text-xl tracking-tight text-white block leading-tight">Amrita</span>
+                        <span class="text-xs text-purple-400 font-mono uppercase tracking-widest block">School of AI</span>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-8">
+                        <a href="#about" class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">About</a>
+                        <a href="#agenda" class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Agenda</a>
+                        <a href="#speaker" class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Speaker</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
+        <!-- Abstract Background -->
+        <div class="absolute inset-0 bg-grid z-0"></div>
+        
+        <!-- Glowing Blobs -->
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full mix-blend-screen filter blur-[100px] animate-blob"></div>
+        <div class="absolute top-1/3 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full mix-blend-screen filter blur-[100px] animate-blob animation-delay-2000"></div>
+        <div class="absolute -bottom-32 left-1/2 w-96 h-96 bg-pink-500/20 rounded-full mix-blend-screen filter blur-[100px] animate-blob animation-delay-4000"></div>
+
+        <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-mono text-purple-300 mb-8 animate-fade-in-up" style="animation-delay: 0.1s;">
+                <span class="w-2 h-2 rounded-full bg-purple-500 animate-pulse-slow"></span>
+                Upcoming Tech Talk Session
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 animate-fade-in-up" style="animation-delay: 0.2s;">
+                Engineering the <br/>
+                <span class="text-gradient">Autonomous Future</span>
+            </h1>
+            
+            <p class="mt-4 max-w-2xl text-lg md:text-xl text-gray-400 mx-auto mb-10 animate-fade-in-up" style="animation-delay: 0.3s;">
+                Journey from the foundational mechanics of Large Language Models to the cutting-edge architecture of Agentic Design Patterns. 
+            </p>
+            
+            <div class="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in-up" style="animation-delay: 0.4s;">
+                <a href="#agenda" class="px-8 py-4 bg-white text-gray-900 rounded-full font-bold text-lg hover:bg-gray-100 transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+                    Explore the Agenda <i class="fa-solid fa-chevron-down text-sm"></i>
+                </a>
+            </div>
+
+            <!-- Meta info -->
+            <div class="mt-16 grid grid-cols-2 gap-6 max-w-xl mx-auto border-t border-white/10 pt-8 animate-fade-in-up" style="animation-delay: 0.5s;">
+                <div class="text-center">
+                    <i class="fa-solid fa-clock text-blue-400 text-xl mb-2"></i>
+                    <p class="text-sm font-semibold">1:30 PM - 2:30 PM</p>
+                    <p class="text-xs text-gray-500">IST</p>
+                </div>
+                <div class="text-center">
+                    <i class="fa-solid fa-users text-pink-400 text-xl mb-2"></i>
+                    <p class="text-sm font-semibold">In-Person</p>
+                    <p class="text-xs text-gray-500">Physical Session</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section id="agenda" class="py-24 bg-ai-dark relative z-10 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 reveal">
+                <h2 class="text-sm font-mono text-purple-400 tracking-widest uppercase mb-2">The Curriculum</h2>
+                <h3 class="text-4xl md:text-5xl font-bold">Talk <span class="text-gradient">Agenda</span></h3>
+                <p class="mt-4 text-gray-400 max-w-2xl mx-auto">A comprehensive deep-dive into the modern generative AI stack, broken down into 9 pivotal topics.</p>
+            </div>
+
+            <!-- Grid Layout for 9 Topics -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Topic 1 -->
+                <a href="./part-1_5.html" target="_blank" rel="noopener noreferrer" class="block bg-ai-card border border-ai-border rounded-2xl p-8 relative overflow-hidden card-hover-effect group reveal cursor-pointer">
+                    <div class="absolute -right-4 -top-8 text-8xl font-black topic-number transition-all duration-300">01</div>
+                    <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6 border border-blue-500/20 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-book-open-reader text-blue-400 text-xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-3 text-white">Introduction to LLMs</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Demystifying Large Language Models. Understand the core architecture, transformers, tokenization, and how these models predict the next word to generate coherent text.
+                    </p>
+                </a>
+
+                <!-- Topic 2 -->
+                <a href="./part-1.html" target="_blank" rel="noopener noreferrer" class="block bg-ai-card border border-ai-border rounded-2xl p-8 relative overflow-hidden card-hover-effect group reveal cursor-pointer">
+                    <div class="absolute -right-4 -top-8 text-8xl font-black topic-number transition-all duration-300">02</div>
+                    <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-6 border border-purple-500/20 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-wand-magic-sparkles text-purple-400 text-xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-3 text-white">LLMs in Action</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Live demonstrations of multimodal generation. Exploring prompt engineering techniques for high-quality text synthesis and integrating image generation models.
+                    </p>
+                </a>
+
+                <!-- Topic 3 -->
+                <a href="./part-2.html" target="_blank" rel="noopener noreferrer" class="block bg-ai-card border border-ai-border rounded-2xl p-8 relative overflow-hidden card-hover-effect group reveal cursor-pointer">
+                    <div class="absolute -right-4 -top-8 text-8xl font-black topic-number transition-all duration-300">03</div>
+                    <div class="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-6 border border-pink-500/20 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-users-viewfinder text-pink-400 text-xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-3 text-white">The Evolving AI Landscape</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Career trajectories in the AI era. Analyzing the shifting boundaries and responsibilities between Data Scientists, ML Engineers, and the emerging role of AI Engineers.
+                    </p>
+                </a>
+
+                <!-- Topic 4 -->
+                <a href="./part-3.html" target="_blank" rel="noopener noreferrer" class="block bg-ai-card border border-ai-border rounded-2xl p-8 relative overflow-hidden card-hover-effect group reveal cursor-pointer">
+                    <div class="absolute -right-4 -top-8 text-8xl font-black topic-number transition-all duration-300">04</div>
+                    <div class="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-6 border border-emerald-500/20 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-database text-emerald-400 text-xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-3 text-white">RAG & Tool Calling</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Giving LLMs memory and hands. Learn how Retrieval-Augmented Generation grounds models in facts, and how Tool Calling allows them to interact with external APIs.
+                    </p>
+                </a>
+
+                <!-- Topic 5 -->
+                <a href="part-3_5.html" target="_blank" rel="noopener noreferrer" class="block bg-ai-card border border-ai-border rounded-2xl p-8 relative overflow-hidden card-hover-effect group reveal cursor-pointer">
+                    <div class="absolute -right-4 -top-8 text-8xl font-black topic-number transition-all duration-300">05</div>
+                    <div class="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-6 border border-amber-500/20 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-code text-amber-400 text-xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-3 text-white">Structured Outputs</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Moving from raw text to predictable data. Techniques for forcing LLMs to output valid JSON, schemas, and strictly formatted data for software integration.
+                    </p>
+                </a>
+
+                <!-- Topic 6 -->
+                <a href="part-6.html" target="_blank" rel="noopener noreferrer" class="block bg-ai-card border border-ai-border rounded-2xl p-8 relative overflow-hidden card-hover-effect group reveal cursor-pointer">
+                    <div class="absolute -right-4 -top-8 text-8xl font-black topic-number transition-all duration-300">06</div>
+                    <div class="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center mb-6 border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-route text-indigo-400 text-xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-3 text-white">Pattern: Routing</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Introduction to Agentic workflows. How to design router agents that classify incoming tasks and dynamically direct them to specialized sub-models or tools.
+                    </p>
+                </a>
+
+                <!-- Topic 7 -->
+                <a href="./part-7.html" target="_blank" rel="noopener noreferrer" class="block bg-ai-card border border-ai-border rounded-2xl p-8 relative overflow-hidden card-hover-effect group reveal cursor-pointer">
+                    <div class="absolute -right-4 -top-8 text-8xl font-black topic-number transition-all duration-300">07</div>
+                    <div class="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center mb-6 border border-cyan-500/20 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-network-wired text-cyan-400 text-xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-3 text-white">Pattern: Parallelization</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Scaling reasoning and throughput. Implementing parallel processing architectures where multiple agents work simultaneously on chunked data to reduce latency.
+                    </p>
+                </a>
+
+                <!-- Topic 8 -->
+                <a href="./part-8.html" target="_blank" rel="noopener noreferrer" class="block bg-ai-card border border-ai-border rounded-2xl p-8 relative overflow-hidden card-hover-effect group reveal cursor-pointer">
+                    <div class="absolute -right-4 -top-8 text-8xl font-black topic-number transition-all duration-300">08</div>
+                    <div class="w-12 h-12 bg-rose-500/10 rounded-xl flex items-center justify-center mb-6 border border-rose-500/20 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-microscope text-rose-400 text-xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-3 text-white">Pattern: Evaluator-Optimizer</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Self-correcting AI systems. Building loops where a primary agent generates a solution and an evaluator agent critiques it, iterating until quality thresholds are met.
+                    </p>
+                </a>
+
+                <!-- Topic 9 -->
+                <a href="./part-9.html" target="_blank" rel="noopener noreferrer" class="block bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-purple-500/30 rounded-2xl p-8 relative overflow-hidden card-hover-effect group reveal cursor-pointer">
+                    <div class="absolute -right-4 -top-8 text-8xl font-black topic-number transition-all duration-300">09</div>
+                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-50"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mb-6 border border-white/20 group-hover:scale-110 transition-transform backdrop-blur-sm">
+                            <i class="fa-solid fa-chess-knight text-white text-xl"></i>
+                        </div>
+                        <h4 class="text-xl font-bold mb-3 text-white">Agents vs. Workflows</h4>
+                        <p class="text-gray-300 text-sm leading-relaxed">
+                            The grand finale. Distinguishing between deterministic LLM workflows and truly autonomous agents. When to use strict pipelines vs. goal-oriented autonomy.
+                        </p>
+                    </div>
+                </a>
+
+            </div>
+        </div>
+    </section>
+
+    <section id="speaker" class="py-24 bg-ai-dark relative border-t border-white/5 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-purple-900/10"></div>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center mb-16 reveal">
+                <h2 class="text-sm font-mono text-purple-400 tracking-widest uppercase mb-2">Who is Speaking</h2>
+                <h3 class="text-4xl font-bold mb-4">Meet the <span class="text-gradient">Speaker</span></h3>
+            </div>
+            
+            <div class="bg-ai-card border border-ai-border rounded-3xl p-8 md:p-12 shadow-2xl reveal flex flex-col md:flex-row items-center gap-10">
+                <div class="w-48 h-48 md:w-64 md:h-64 rounded-full overflow-hidden border-4 border-white/5 shrink-0 shadow-[0_0_30px_rgba(139,92,246,0.2)] bg-gray-800 flex items-center justify-center">
+                    <img src="./media/speaker.JPEG">
+                </div>
+                
+                <div class="text-center md:text-left w-full">
+                    <h4 class="text-3xl font-bold text-white mb-2">Saurav Prateek</h4>
+                    <p class="text-purple-400 font-mono text-sm mb-4">Senior Web Solutions Engineer @ Google India</p>
+                    
+                    <div class="text-gray-400 mb-6 leading-relaxed space-y-3 text-sm">
+                        <p>
+                            Saurav Prateek is a Senior Web Solutions Engineer (L5) at Google India, working in the gTech Ads - TAI team where he leads development of tools for automated video headroom planning. He previously worked as a Software Engineer at GeeksforGeeks.
+                        </p>
+                        <p>
+                            He is deeply passionate about Machine Learning, Artificial Intelligence, and Distributed Systems. Beyond his engineering role, Saurav is an active content creator and educator, maintaining the "Systems That Scale" engineering newsletter with over 30K subscribers and running a YouTube channel focused on AI and Software Engineering.
+                        </p>
+                    </div>
+                    
+                    <div class="flex flex-wrap items-center justify-center md:justify-start gap-4">
+                        <a href="https://sauravp97.github.io/" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-full bg-white/5 flex items-center gap-2 text-gray-300 hover:text-white hover:bg-white/10 transition-all border border-white/10 text-sm">
+                            <i class="fa-solid fa-globe"></i> Website
+                        </a>
+                        <a href="https://github.com/sauravp97" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-full bg-white/5 flex items-center gap-2 text-gray-300 hover:text-white hover:bg-white/10 transition-all border border-white/10 text-sm">
+                            <i class="fa-brands fa-github"></i> GitHub
+                        </a>
+                        <a href="https://www.linkedin.com/in/saurav-prateek-7b2096140/" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-full bg-white/5 flex items-center gap-2 text-gray-300 hover:text-white hover:bg-white/10 transition-all border border-white/10 text-sm">
+                            <i class="fa-brands fa-linkedin"></i> LinkedIn
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-24 bg-[#0a0e17] relative border-t border-white/5 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-blue-900/10"></div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div class="reveal">
+                    <h2 class="text-3xl md:text-4xl font-bold mb-6">Why learn <span class="text-purple-400">Agentic Architecture?</span></h2>
+                    <p class="text-gray-400 mb-6 text-lg">
+                        We are shifting from prompting models to building systems. Single zero-shot prompts are hitting their limits.
+                    </p>
+                    <ul class="space-y-4">
+                        <li class="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/5">
+                            <div class="mt-1 w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-arrow-trend-up text-blue-400 text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white mb-1">Higher Reliability</h4>
+                                <p class="text-sm text-gray-400">Evaluator-optimizer loops catch hallucinations before they reach the user.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/5">
+                            <div class="mt-1 w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-bolt text-purple-400 text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white mb-1">Complex Task Execution</h4>
+                                <p class="text-sm text-gray-400">Routing and parallelization allow handling multi-step processes that require logic and tool use.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Diagram Mockup -->
+                <div class="bg-ai-card p-6 rounded-2xl border border-ai-border shadow-2xl reveal relative group">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
+                        <span class="text-sm font-mono text-gray-400">System Architecture Map</span>
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col items-center gap-6 font-mono text-xs text-center relative">
+                        <!-- User Input -->
+                        <div class="bg-white/10 border border-white/20 px-4 py-2 rounded text-white w-48 relative z-10">User Query</div>
+                        
+                        <!-- Line -->
+                        <div class="h-8 w-px bg-blue-500/50"></div>
+                        
+                        <!-- Router -->
+                        <div class="bg-blue-900/40 border border-blue-500/50 px-4 py-2 rounded-lg text-blue-300 w-48 relative z-10 font-bold shadow-[0_0_15px_rgba(59,130,246,0.2)]">Router Agent</div>
+                        
+                        <!-- Branches -->
+                        <div class="w-64 h-px bg-purple-500/50 flex justify-between relative">
+                            <div class="h-8 w-px bg-purple-500/50 absolute left-0 top-0"></div>
+                            <div class="h-8 w-px bg-purple-500/50 absolute right-0 top-0"></div>
+                        </div>
+                        
+                        <!-- Parallel Agents -->
+                        <div class="flex justify-between w-72 mt-8 z-10">
+                            <div class="bg-purple-900/40 border border-purple-500/50 px-3 py-2 rounded text-purple-300 w-32">Search Tool</div>
+                            <div class="bg-purple-900/40 border border-purple-500/50 px-3 py-2 rounded text-purple-300 w-32">Data Analyzer</div>
+                        </div>
+                        
+                        <!-- Convergence -->
+                        <div class="w-64 h-px bg-pink-500/50 flex justify-between relative mt-6">
+                            <div class="h-8 w-px bg-pink-500/50 absolute left-0 bottom-0"></div>
+                            <div class="h-8 w-px bg-pink-500/50 absolute right-0 bottom-0"></div>
+                        </div>
+                        
+                        <!-- Evaluator -->
+                        <div class="bg-pink-900/40 border border-pink-500/50 px-4 py-2 rounded-lg text-pink-300 w-48 relative z-10 font-bold mt-8 shadow-[0_0_15px_rgba(236,72,153,0.2)]">Evaluator Node</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-[#05070a] py-12 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
+                <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                    <i class="fa-solid fa-brain text-white text-sm"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-lg tracking-tight text-white block leading-tight">Amrita</span>
+                    <span class="text-[10px] text-gray-400 font-mono uppercase tracking-widest block">School of AI</span>
+                </div>
+            </div>
+            
+            <p class="text-gray-500 text-sm text-center md:text-left">
+                &copy; 2026 Amrita Vishwa Vidyapeetham. All generative elements for educational purposes.
+            </p>
+            
+            <div class="flex gap-4">
+                <a href="#" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all">
+                    <i class="fa-brands fa-twitter"></i>
+                </a>
+                <a href="#" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all">
+                    <i class="fa-brands fa-linkedin-in"></i>
+                </a>
+                <a href="#" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all">
+                    <i class="fa-brands fa-github"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Intersection Observer for scroll animations
+        document.addEventListener("DOMContentLoaded", () => {
+            const reveals = document.querySelectorAll('.reveal');
+            
+            const revealOptions = {
+                threshold: 0.15,
+                rootMargin: "0px 0px -50px 0px"
+            };
+
+            const revealOnScroll = new IntersectionObserver(function(entries, observer) {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add('active');
+                    observer.unobserve(entry.target); // Run once
+                });
+            }, revealOptions);
+
+            reveals.forEach(reveal => {
+                revealOnScroll.observe(reveal);
+            });
+            
+            // Add slight staggered delay to grid items
+            const gridItems = document.querySelectorAll('.grid > .reveal');
+            gridItems.forEach((item, index) => {
+                item.style.transitionDelay = `${(index % 3) * 0.15}s`;
+            });
+        });
+    </script>
+</body>
+</html>
