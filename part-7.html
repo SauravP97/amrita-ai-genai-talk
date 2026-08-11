@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Parallelization | AI Engineering Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'data-flow-h': 'dataFlowHorizontal 1.5s linear infinite',
+                        'data-flow-v': 'dataFlowVertical 1.5s linear infinite',
+                    },
+                    keyframes: {
+                        'fadeInUp': {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        'dataFlowHorizontal': {
+                            '0%': { strokeDashoffset: '24' },
+                            '100%': { strokeDashoffset: '0' },
+                        },
+                        'dataFlowVertical': {
+                            '0%': { strokeDashoffset: '24' },
+                            '100%': { strokeDashoffset: '0' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617; /* slate-950 */
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 1); }
+
+        /* Processing Visuals */
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .agent-node {
+            transition: all 0.3s ease;
+        }
+
+        .agent-node.processing {
+            border-color: rgba(56, 189, 248, 0.8);
+            box-shadow: 0 0 20px -5px rgba(56, 189, 248, 0.5);
+        }
+
+        .agent-node.done {
+            border-color: rgba(52, 211, 153, 0.8);
+            background-color: rgba(52, 211, 153, 0.05);
+        }
+
+        /* SVG Paths */
+        .svg-connector {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .connection-path {
+            stroke: rgba(100, 116, 139, 0.3);
+            stroke-width: 2;
+            fill: none;
+            transition: stroke 0.3s ease;
+        }
+
+        .connection-path.active {
+            stroke: rgba(56, 189, 248, 0.6);
+            stroke-width: 3;
+            stroke-dasharray: 8 4;
+            animation: dataFlowHorizontal 0.5s linear infinite;
+        }
+
+        .connection-path.done {
+            stroke: rgba(52, 211, 153, 0.5);
+            stroke-dasharray: none;
+            animation: none;
+        }
+
+        /* Document Chunks */
+        .chunk {
+            transition: all 0.3s ease;
+            transform: scale(1);
+        }
+        
+        .chunk.moving {
+            transform: scale(0.9);
+            opacity: 0.5;
+        }
+
+        .timer-display {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-sky-500/30">
+
+    <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-sky-900/10 blur-[150px] mix-blend-screen"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-900/10 blur-[120px] mix-blend-screen"></div>
+    </div>
+
+    <nav class="relative z-50 w-full px-6 py-4 flex items-center justify-between glass-panel border-b-0 border-b-white/5 sticky top-0">
+        <div class="flex items-center gap-2 text-sky-400 font-bold tracking-tight text-xl">
+            <i data-lucide="layers" class="w-6 h-6"></i> Agent_Parallelization
+        </div>
+        <div class="hidden md:flex gap-6 text-sm font-medium text-slate-400">
+            <a href="#concept" class="hover:text-white transition-colors">1. The Concept</a>
+            <a href="#simulation" class="hover:text-white transition-colors">2. Simulation</a>
+            <a href="#implementation" class="hover:text-white transition-colors">3. Implementation</a>
+        </div>
+    </nav>
+
+    <main class="relative z-10 flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-24">
+        
+        <!-- Section 1: Concept -->
+        <section id="concept" class="text-center pt-8 pb-4 opacity-0 animate-fade-in-up">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-sky-300 text-xs font-semibold tracking-wide mb-6 uppercase shadow-[0_0_15px_rgba(56,189,248,0.15)] border border-sky-500/20">
+                <i data-lucide="network" class="w-4 h-4"></i> Agent Design Patterns
+            </div>
+            <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6">
+                The <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-400">Parallelization</span> Pattern
+            </h1>
+            <p class="text-lg text-slate-400 font-light max-w-3xl mx-auto leading-relaxed">
+                LLM inference is slow. When tasks are independent—like reviewing 5 different files or evaluating a document against 10 distinct criteria—processing them sequentially creates severe bottlenecks. <strong>Parallelization</strong> distributes the workload across multiple agents simultaneously, trading compute for a massive reduction in latency.
+            </p>
+        </section>
+
+        <!-- Section 2: Interactive Simulation -->
+        <section id="simulation" class="scroll-mt-24 opacity-0 animate-fade-in-up" style="animation-delay: 0.2s;">
+            <div class="glass-panel rounded-2xl border border-slate-700/50 shadow-2xl p-6 md:p-8 relative overflow-hidden">
+                
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-white mb-2">The Task: Summarize a 100-page Document</h2>
+                    <p class="text-sm text-slate-400">Watch the latency difference between processing chunks sequentially vs. parallelizing the workload.</p>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="flex justify-center gap-4 mb-12 z-20 relative">
+                    <button id="btn-seq" onclick="runSimulation('sequential')" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-sm font-semibold text-white transition-all flex items-center gap-2 shadow-lg">
+                        <i data-lucide="play-circle" class="w-4 h-4 text-slate-400"></i> Run Sequential
+                    </button>
+                    <button id="btn-par" onclick="runSimulation('parallel')" class="px-6 py-3 bg-slate-800 hover:bg-sky-900/50 border border-slate-600 hover:border-sky-500/50 rounded-xl text-sm font-semibold text-white transition-all flex items-center gap-2 shadow-lg">
+                        <i data-lucide="fast-forward" class="w-4 h-4 text-sky-400"></i> Run Parallel (Map-Reduce)
+                    </button>
+                    <button onclick="resetSimulation()" class="px-4 py-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 transition-all">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Timer Display -->
+                <div class="absolute top-6 right-6 bg-slate-900 border border-slate-700 rounded-lg p-3 text-right shadow-inner">
+                    <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1 font-mono">Total Latency</div>
+                    <div id="master-timer" class="text-2xl font-mono font-bold text-sky-400 timer-display">0.00s</div>
+                </div>
+
+                <!-- Simulation Architecture Area -->
+                <div class="relative w-full min-h-[400px] flex flex-col md:flex-row items-center justify-between gap-8 md:gap-0 mt-8" id="sim-container">
+                    
+                    <!-- SVG Connections -->
+                    <svg class="svg-connector" id="parallel-svg" preserveAspectRatio="none">
+                        <!-- Map Paths -->
+                        <path id="path-map-1" class="connection-path" d="" />
+                        <path id="path-map-2" class="connection-path" d="" />
+                        <path id="path-map-3" class="connection-path" d="" />
+                        <!-- Reduce Paths -->
+                        <path id="path-reduce-1" class="connection-path" d="" />
+                        <path id="path-reduce-2" class="connection-path" d="" />
+                        <path id="path-reduce-3" class="connection-path" d="" />
+                    </svg>
+
+                    <!-- Stage 1: The Input (Splitter) -->
+                    <div class="w-full md:w-1/4 flex flex-col items-center z-10" id="node-input">
+                        <div class="bg-slate-800 border-2 border-slate-600 rounded-xl p-4 w-48 text-center shadow-lg relative">
+                            <h3 class="font-bold text-slate-200 text-sm mb-3">Input Document</h3>
+                            
+                            <div class="space-y-2" id="input-chunks">
+                                <!-- Chunks -->
+                                <div id="chunk-1" class="chunk bg-slate-700 border border-slate-500 rounded p-2 flex items-center justify-between">
+                                    <span class="text-xs font-mono text-slate-300">Pages 1-33</span>
+                                    <i data-lucide="file-text" class="w-3 h-3 text-slate-400"></i>
+                                </div>
+                                <div id="chunk-2" class="chunk bg-slate-700 border border-slate-500 rounded p-2 flex items-center justify-between">
+                                    <span class="text-xs font-mono text-slate-300">Pages 34-66</span>
+                                    <i data-lucide="file-text" class="w-3 h-3 text-slate-400"></i>
+                                </div>
+                                <div id="chunk-3" class="chunk bg-slate-700 border border-slate-500 rounded p-2 flex items-center justify-between">
+                                    <span class="text-xs font-mono text-slate-300">Pages 67-100</span>
+                                    <i data-lucide="file-text" class="w-3 h-3 text-slate-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 uppercase mt-2 font-mono">Document Splitter</div>
+                    </div>
+
+                    <!-- Stage 2: Worker Agents (Map) -->
+                    <div class="w-full md:w-1/3 flex flex-col justify-center gap-6 z-10">
+                        
+                        <!-- Worker 1 -->
+                        <div id="worker-1" class="agent-node bg-slate-900 border border-slate-700 rounded-xl p-3 w-full max-w-[220px] mx-auto shadow-md relative overflow-hidden">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-sky-400 border border-slate-700" id="icon-w1">
+                                    <i data-lucide="cpu" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-200">Worker Agent A</div>
+                                    <div class="text-[10px] text-slate-500 font-mono" id="status-w1">Idle</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar-container mt-2">
+                                <div id="prog-w1" class="progress-bar bg-sky-500"></div>
+                            </div>
+                        </div>
+
+                        <!-- Worker 2 -->
+                        <div id="worker-2" class="agent-node bg-slate-900 border border-slate-700 rounded-xl p-3 w-full max-w-[220px] mx-auto shadow-md relative overflow-hidden">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-sky-400 border border-slate-700" id="icon-w2">
+                                    <i data-lucide="cpu" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-200">Worker Agent B</div>
+                                    <div class="text-[10px] text-slate-500 font-mono" id="status-w2">Idle</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar-container mt-2">
+                                <div id="prog-w2" class="progress-bar bg-sky-500"></div>
+                            </div>
+                        </div>
+
+                        <!-- Worker 3 -->
+                        <div id="worker-3" class="agent-node bg-slate-900 border border-slate-700 rounded-xl p-3 w-full max-w-[220px] mx-auto shadow-md relative overflow-hidden">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-sky-400 border border-slate-700" id="icon-w3">
+                                    <i data-lucide="cpu" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-200">Worker Agent C</div>
+                                    <div class="text-[10px] text-slate-500 font-mono" id="status-w3">Idle</div>
+                                </div>
+                            </div>
+                            <div class="progress-bar-container mt-2">
+                                <div id="prog-w3" class="progress-bar bg-sky-500"></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Stage 3: The Synthesizer (Reduce) -->
+                    <div class="w-full md:w-1/4 flex flex-col items-center z-10" id="node-output">
+                        <div id="synthesizer" class="agent-node bg-indigo-950/50 border border-indigo-900/50 rounded-xl p-4 w-48 text-center shadow-lg transition-all duration-500">
+                            <div class="w-10 h-10 mx-auto rounded-full bg-indigo-900 flex items-center justify-center text-indigo-400 mb-3 border border-indigo-700" id="icon-synth">
+                                <i data-lucide="git-merge" class="w-5 h-5"></i>
+                            </div>
+                            <h3 class="font-bold text-indigo-200 text-sm">Synthesizer Agent</h3>
+                            <p class="text-[10px] text-indigo-300/70 mt-1 font-mono h-4" id="status-synth">Awaiting Summaries...</p>
+                            
+                            <div class="mt-4 p-2 bg-indigo-950 rounded border border-indigo-900 opacity-0 transition-opacity duration-500" id="final-output">
+                                <div class="text-xs text-emerald-400 font-bold mb-1 flex items-center justify-center gap-1">
+                                    <i data-lucide="check-circle-2" class="w-3 h-3"></i> Complete
+                                </div>
+                                <div class="text-[10px] text-slate-300 font-mono">Final_Summary.md</div>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 uppercase mt-2 font-mono">Final Output</div>
+                    </div>
+
+                </div>
+
+                <!-- Trace Log Terminal -->
+                <div class="mt-12 bg-black border border-slate-800 rounded-xl overflow-hidden z-20 relative shadow-lg">
+                    <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex items-center gap-2">
+                        <i data-lucide="terminal-square" class="w-4 h-4 text-slate-500"></i>
+                        <span class="text-xs font-mono text-slate-500">Execution_Log</span>
+                    </div>
+                    <div class="p-4 font-mono text-sm h-32 overflow-y-auto bg-[#0d1117]" id="trace-log">
+                        <div class="text-slate-600 italic">System ready. Select execution mode to begin...</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Section 3: Implementation Detail -->
+        <section id="implementation" class="scroll-mt-24 border-t border-slate-800/50 pt-16 pb-20 opacity-0 animate-fade-in-up" style="animation-delay: 0.4s;">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-white mb-4">When to use Parallelization</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto text-sm leading-relaxed">
+                    Not all tasks can be parallelized. This pattern works best for <strong>Map-Reduce</strong> scenarios or <strong>Independent Evaluations</strong> where tasks do not rely on previous outputs.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                
+                <!-- Map Reduce -->
+                <div class="glass-panel p-6 rounded-xl border border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-3 border-b border-slate-800 pb-3">
+                        <i data-lucide="files" class="w-5 h-5 text-sky-400"></i>
+                        <h3 class="font-semibold text-lg text-white">Sectioning (Map-Reduce)</h3>
+                    </div>
+                    <p class="text-sm text-slate-400 mb-4">Splitting a massive task into identical smaller tasks, then combining them.</p>
+                    <ul class="text-sm text-slate-300 space-y-2">
+                        <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 mt-0.5"></i> Summarizing a 500-page PDF by chunking it.</li>
+                        <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 mt-0.5"></i> Extracting data from 100 different receipts.</li>
+                    </ul>
+                </div>
+
+                <!-- Independent Eval -->
+                <div class="glass-panel p-6 rounded-xl border border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-3 border-b border-slate-800 pb-3">
+                        <i data-lucide="microscope" class="w-5 h-5 text-purple-400"></i>
+                        <h3 class="font-semibold text-lg text-white">Independent Evaluation</h3>
+                    </div>
+                    <p class="text-sm text-slate-400 mb-4">Having multiple agents evaluate the same input simultaneously looking for different things.</p>
+                    <ul class="text-sm text-slate-300 space-y-2">
+                        <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 mt-0.5"></i> One agent checks code for bugs, another checks for security, a third checks performance.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Code Snippet -->
+            <div class="max-w-4xl mx-auto mt-8 bg-[#0d1117] rounded-xl border border-slate-800 overflow-hidden shadow-2xl">
+                <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
+                    <span class="text-xs font-mono text-slate-500">Python Implementation (asyncio)</span>
+                </div>
+                <div class="p-4 font-mono text-sm text-slate-300 overflow-x-auto whitespace-pre">
+<span class="text-purple-400">import</span> asyncio
+
+<span class="text-purple-400">async def</span> <span class="text-blue-400">process_chunk</span>(chunk):
+    <span class="text-slate-500"># Call LLM API here</span>
+    <span class="text-purple-400">return</span> <span class="text-sky-400">await</span> llm.generate(f<span class="text-green-400">"Summarize: {chunk}"</span>)
+
+<span class="text-purple-400">async def</span> <span class="text-blue-400">run_parallel</span>(chunks):
+    <span class="text-slate-500"># Fire off all requests simultaneously</span>
+    tasks = [process_chunk(chunk) <span class="text-purple-400">for</span> chunk <span class="text-purple-400">in</span> chunks]
+    
+    <span class="text-slate-500"># Wait for all to complete</span>
+    summaries = <span class="text-sky-400">await</span> asyncio.gather(*tasks)
+    
+    <span class="text-slate-500"># Synthesize final result</span>
+    <span class="text-purple-400">return</span> <span class="text-sky-400">await</span> llm.generate(f<span class="text-green-400">"Combine these: {summaries}"</span>)
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Initialize Icons
+        window.onload = () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            
+            // Intersection Observer for fade-in animations
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.animationPlayState = 'running';
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.animate-fade-in-up').forEach(el => {
+                el.style.animationPlayState = 'paused';
+                observer.observe(el);
+            });
+
+            // Initial SVG path calculation
+            drawConnections();
+            window.addEventListener('resize', drawConnections);
+        };
+
+        // --- SVG Drawing Logic ---
+        function drawConnections() {
+            const svg = document.getElementById('parallel-svg');
+            const container = document.getElementById('sim-container');
+            
+            svg.setAttribute('width', container.offsetWidth);
+            svg.setAttribute('height', container.offsetHeight);
+
+            const getCenter = (el) => {
+                const rect = el.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                return {
+                    x: rect.left - containerRect.left + (rect.width / 2),
+                    y: rect.top - containerRect.top + (rect.height / 2)
+                };
+            };
+
+            const inputNode = document.getElementById('node-input');
+            const outputNode = document.getElementById('node-output');
+            const inputPos = getCenter(inputNode);
+            const outputPos = getCenter(outputNode);
+
+            // Draw paths to and from each worker
+            for (let i = 1; i <= 3; i++) {
+                const worker = document.getElementById(`worker-${i}`);
+                const workerPos = getCenter(worker);
+                
+                // Input to Worker
+                const pathMap = document.getElementById(`path-map-${i}`);
+                pathMap.setAttribute('d', `M ${inputPos.x} ${inputPos.y} C ${inputPos.x + 50} ${inputPos.y}, ${workerPos.x - 50} ${workerPos.y}, ${workerPos.x} ${workerPos.y}`);
+
+                // Worker to Output
+                const pathReduce = document.getElementById(`path-reduce-${i}`);
+                pathReduce.setAttribute('d', `M ${workerPos.x} ${workerPos.y} C ${workerPos.x + 50} ${workerPos.y}, ${outputPos.x - 50} ${outputPos.y}, ${outputPos.x} ${outputPos.y}`);
+            }
+        }
+
+        // --- Simulation Logic ---
+        let isSimulating = false;
+        let timerInterval;
+        let startTime;
+
+        const PROCESSING_TIME = 2000; // time for one agent to process a chunk
+
+        async function runSimulation(mode) {
+            if (isSimulating) return;
+            isSimulating = true;
+            resetVisuals();
+
+            const btnSeq = document.getElementById('btn-seq');
+            const btnPar = document.getElementById('btn-par');
+            
+            // UI State
+            if(mode === 'sequential') {
+                btnSeq.classList.replace('bg-slate-800', 'bg-slate-700');
+                btnSeq.classList.add('ring-2', 'ring-slate-500');
+            } else {
+                btnPar.classList.replace('bg-slate-800', 'bg-sky-900/50');
+                btnPar.classList.add('ring-2', 'ring-sky-500');
+            }
+
+            log(`Starting execution mode: <span class="text-sky-400 font-bold">${mode.toUpperCase()}</span>`);
+            startTimer();
+
+            if (mode === 'sequential') {
+                await executeSequential();
+            } else {
+                await executeParallel();
+            }
+
+            stopTimer();
+            log(`<span class="text-emerald-400 font-bold">Execution complete.</span> Final latency: ${document.getElementById('master-timer').innerText}`);
+            
+            isSimulating = false;
+            // Reset buttons
+            btnSeq.classList.replace('bg-slate-700', 'bg-slate-800');
+            btnSeq.classList.remove('ring-2', 'ring-slate-500');
+            btnPar.classList.replace('bg-sky-900/50', 'bg-slate-800');
+            btnPar.classList.remove('ring-2', 'ring-sky-500');
+        }
+
+        async function executeSequential() {
+            log("Splitting document into 3 chunks...");
+            await delay(500);
+
+            // In sequential, one agent does all the work, one after another
+            for (let i = 1; i <= 3; i++) {
+                log(`Agent A processing Chunk ${i}...`);
+                
+                // Animate chunk moving
+                document.getElementById(`chunk-${i}`).classList.add('moving');
+                const path = document.getElementById(`path-map-1`);
+                path.classList.add('active');
+
+                // Animate Processing on Worker 1
+                const worker = document.getElementById('worker-1');
+                const status = document.getElementById('status-w1');
+                const prog = document.getElementById('prog-w1');
+                const icon = document.getElementById('icon-w1');
+                
+                worker.classList.add('processing');
+                status.innerText = `Processing Chunk ${i}...`;
+                status.classList.add('text-sky-400');
+                icon.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>`;
+                lucide.createIcons();
+
+                // Progress bar animation
+                await animateProgress(prog, PROCESSING_TIME);
+
+                // Done with chunk
+                path.classList.remove('active');
+                path.classList.add('done');
+                worker.classList.remove('processing');
+                status.innerText = "Waiting...";
+                status.classList.remove('text-sky-400');
+                icon.innerHTML = `<i data-lucide="cpu" class="w-4 h-4"></i>`;
+                lucide.createIcons();
+                prog.style.width = '0%';
+                
+                log(`<span class="text-slate-400">Chunk ${i} completed.</span>`);
+            }
+
+            // Synthesis phase
+            await runSynthesis();
+        }
+
+        async function executeParallel() {
+            log("Splitting document into 3 chunks...");
+            await delay(500);
+            log("Distributing chunks to Agents A, B, and C simultaneously...");
+
+            // Animate all chunks moving
+            for(let i=1; i<=3; i++) {
+                document.getElementById(`chunk-${i}`).classList.add('moving');
+                document.getElementById(`path-map-${i}`).classList.add('active');
+            }
+
+            // Start processing on all workers simultaneously
+            const tasks = [1, 2, 3].map(async (i) => {
+                const worker = document.getElementById(`worker-${i}`);
+                const status = document.getElementById(`status-w${i}`);
+                const prog = document.getElementById(`prog-w${i}`);
+                const icon = document.getElementById(`icon-w${i}`);
+                
+                worker.classList.add('processing');
+                status.innerText = `Processing Chunk ${i}...`;
+                status.classList.add('text-sky-400');
+                icon.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>`;
+                
+                // Slight random variation in processing time for realism
+                const variance = Math.floor(Math.random() * 400) - 200;
+                await animateProgress(prog, PROCESSING_TIME + variance);
+
+                // Worker done
+                document.getElementById(`path-map-${i}`).classList.remove('active');
+                document.getElementById(`path-map-${i}`).classList.add('done');
+                worker.classList.remove('processing');
+                worker.classList.add('done');
+                status.innerText = "Complete";
+                status.classList.remove('text-sky-400');
+                status.classList.add('text-emerald-500');
+                icon.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-emerald-500"></i>`;
+                
+                log(`<span class="text-slate-400">Agent ${String.fromCharCode(64+i)} finished Chunk ${i}.</span>`);
+            });
+
+            lucide.createIcons();
+            
+            // Wait for ALL workers to finish (gather)
+            await Promise.all(tasks);
+            log("All parallel tasks completed.");
+
+            // Synthesis phase
+            await runSynthesis();
+        }
+
+        async function runSynthesis() {
+            log("Forwarding results to Synthesizer Agent...");
+            
+            // Activate reduce paths
+            for(let i=1; i<=3; i++) {
+                document.getElementById(`path-reduce-${i}`).classList.add('active');
+            }
+
+            await delay(600);
+
+            // Stop paths, animate synthesizer
+            for(let i=1; i<=3; i++) {
+                document.getElementById(`path-reduce-${i}`).classList.remove('active');
+                document.getElementById(`path-reduce-${i}`).classList.add('done');
+            }
+
+            const synth = document.getElementById('synthesizer');
+            const status = document.getElementById('status-synth');
+            const icon = document.getElementById('icon-synth');
+            
+            synth.classList.add('border-indigo-400', 'shadow-[0_0_30px_rgba(129,140,248,0.4)]');
+            status.innerText = "Synthesizing final report...";
+            status.classList.add('text-indigo-300');
+            icon.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>`;
+            lucide.createIcons();
+
+            log("Synthesizer combining partial summaries...");
+            await delay(1500);
+
+            // Final Output
+            icon.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>`;
+            icon.classList.replace('bg-indigo-900', 'bg-slate-900');
+            icon.classList.replace('border-indigo-700', 'border-emerald-700');
+            
+            status.innerText = "Synthesis Complete";
+            status.classList.replace('text-indigo-300', 'text-emerald-400');
+            synth.classList.remove('border-indigo-400', 'shadow-[0_0_30px_rgba(129,140,248,0.4)]');
+            
+            document.getElementById('final-output').classList.remove('opacity-0');
+            lucide.createIcons();
+        }
+
+        // --- Helpers ---
+
+        function animateProgress(element, duration) {
+            return new Promise(resolve => {
+                let start = null;
+                function step(timestamp) {
+                    if (!start) start = timestamp;
+                    let progress = timestamp - start;
+                    let percentage = Math.min(progress / duration * 100, 100);
+                    element.style.width = percentage + '%';
+                    
+                    if (progress < duration) {
+                        window.requestAnimationFrame(step);
+                    } else {
+                        resolve();
+                    }
+                }
+                window.requestAnimationFrame(step);
+            });
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            const display = document.getElementById('master-timer');
+            display.classList.remove('text-emerald-400');
+            display.classList.add('text-sky-400');
+            
+            timerInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                display.innerText = elapsed.toFixed(2) + 's';
+            }, 50);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            const display = document.getElementById('master-timer');
+            display.classList.remove('text-sky-400');
+            display.classList.add('text-emerald-400');
+        }
+
+        function resetVisuals() {
+            clearInterval(timerInterval);
+            document.getElementById('master-timer').innerText = '0.00s';
+            document.getElementById('master-timer').classList.replace('text-emerald-400', 'text-sky-400');
+            
+            // Reset Chunks
+            for(let i=1; i<=3; i++) {
+                document.getElementById(`chunk-${i}`).classList.remove('moving');
+                
+                // Reset Paths
+                const pMap = document.getElementById(`path-map-${i}`);
+                pMap.classList.remove('active', 'done');
+                const pRed = document.getElementById(`path-reduce-${i}`);
+                pRed.classList.remove('active', 'done');
+                
+                // Reset Workers
+                const worker = document.getElementById(`worker-${i}`);
+                worker.className = 'agent-node bg-slate-900 border border-slate-700 rounded-xl p-3 w-full max-w-[220px] mx-auto shadow-md relative overflow-hidden';
+                document.getElementById(`status-w${i}`).className = 'text-[10px] text-slate-500 font-mono';
+                document.getElementById(`status-w${i}`).innerText = 'Idle';
+                document.getElementById(`prog-w${i}`).style.width = '0%';
+                document.getElementById(`icon-w${i}`).innerHTML = `<i data-lucide="cpu" class="w-4 h-4"></i>`;
+            }
+
+            // Reset Synthesizer
+            const synth = document.getElementById('synthesizer');
+            synth.className = 'agent-node bg-indigo-950/50 border border-indigo-900/50 rounded-xl p-4 w-48 text-center shadow-lg transition-all duration-500';
+            const sStatus = document.getElementById('status-synth');
+            sStatus.className = 'text-[10px] text-indigo-300/70 mt-1 font-mono h-4';
+            sStatus.innerText = 'Awaiting Summaries...';
+            const sIcon = document.getElementById('icon-synth');
+            sIcon.className = 'w-10 h-10 mx-auto rounded-full bg-indigo-900 flex items-center justify-center text-indigo-400 mb-3 border border-indigo-700';
+            sIcon.innerHTML = `<i data-lucide="git-merge" class="w-5 h-5"></i>`;
+            document.getElementById('final-output').classList.add('opacity-0');
+
+            lucide.createIcons();
+            document.getElementById('trace-log').innerHTML = '';
+        }
+
+        function log(message) {
+            const logContainer = document.getElementById('trace-log');
+            const entry = document.createElement('div');
+            entry.className = "mb-1 animate-fade-in-up text-xs";
+            entry.innerHTML = `<span class="text-slate-500">[${new Date().toISOString().split('T')[1].slice(0,-1)}]</span> ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>

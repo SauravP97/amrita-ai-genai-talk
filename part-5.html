@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Demo | AI Engineer's Playbook</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'blink': 'blink 1s step-end infinite',
+                    },
+                    keyframes: {
+                        'fadeInUp': {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        'blink': {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617; /* slate-950 */
+            color: #f8fafc; /* slate-50 */
+            overflow-x: hidden;
+        }
+        
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Syntax Highlighting */
+        .code-keyword { color: #c678dd; } /* purple */
+        .code-string { color: #98c379; }  /* green */
+        .code-function { color: #61afef; } /* blue */
+        .code-variable { color: #e06c75; } /* red */
+        .code-comment { color: #7f848e; font-style: italic; } /* gray */
+        .code-property { color: #d19a66; } /* orange */
+        .code-class { color: #e5c07b; } /* yellow */
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 1); }
+
+        .terminal-glow {
+            box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.05);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col selection:bg-amber-500/30">
+
+    <!-- Ambient Background Elements -->
+    <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-[10%] left-[20%] w-[30%] h-[30%] rounded-full bg-amber-900/10 blur-[120px] mix-blend-screen transition-all duration-1000"></div>
+        <div class="absolute bottom-[10%] right-[20%] w-[40%] h-[40%] rounded-full bg-emerald-900/10 blur-[120px] mix-blend-screen transition-all duration-1000"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="relative z-10 w-full pt-8 pb-4 text-center opacity-0 animate-fade-in-up">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-slate-300 text-sm font-semibold tracking-wide mb-3 uppercase shadow-lg">
+            <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i> Session 04
+        </div>
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-2 flex items-center justify-center gap-3">
+            The <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">Live Demo</span>
+        </h1>
+        <p class="text-slate-400 font-light tracking-wide max-w-2xl mx-auto">15 lines of code. Zero machine learning degrees required.</p>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="relative z-10 w-full max-w-xl mx-auto px-4 mb-2 opacity-0 animate-fade-in-up" style="animation-delay: 0.15s;">
+        <div class="flex p-1 space-x-2 bg-slate-900/50 rounded-xl glass-panel">
+            <button onclick="switchDemo(1)" id="tab-demo-1" class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-300 bg-amber-600/40 text-amber-100 shadow-[0_0_15px_rgba(217,119,6,0.15)] ring-1 ring-amber-500/50">
+                Demo 01: Extraction
+            </button>
+            <button onclick="switchDemo(2)" id="tab-demo-2" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-all duration-300">
+                Demo 02: Simple RAG
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="relative z-10 flex-grow w-full max-w-6xl mx-auto px-4 pb-12 flex flex-col lg:flex-row gap-6 mt-4 opacity-0 animate-fade-in-up" style="animation-delay: 0.2s;">
+
+        <!-- Left: Code Editor -->
+        <div class="w-full lg:w-3/5 flex flex-col glass-panel rounded-2xl border border-slate-700/50 shadow-2xl overflow-hidden relative">
+            <!-- Window Bar -->
+            <div class="bg-slate-900/80 px-4 py-3 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                    <span id="file-name" class="ml-3 text-xs font-mono text-slate-400 font-medium">extractor.py</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="px-2 py-1 bg-blue-900/30 text-blue-300 text-[10px] rounded font-mono border border-blue-800/50 flex items-center gap-1">
+                        <i data-lucide="box" class="w-3 h-3"></i> google-genai
+                    </span>
+                    <button onclick="copyCode()" class="text-slate-500 hover:text-slate-300 transition-colors tooltip relative group">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                        <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Copy Code</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Code Content -->
+            <div class="p-5 bg-[#1e1e1e] flex-grow overflow-x-auto text-sm md:text-[15px] font-mono leading-relaxed relative">
+                <!-- Line Numbers -->
+                <div class="absolute left-0 top-0 bottom-0 w-12 bg-[#1e1e1e] border-r border-slate-800 flex flex-col items-end pr-3 pt-5 text-slate-600 select-none">
+                    1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21
+                </div>
+                
+                <div id="code-demo-1" class="pl-10 pb-4 whitespace-pre">
+<span class="code-keyword">import</span> os
+<span class="code-keyword">from</span> google <span class="code-keyword">import</span> genai
+
+<span class="code-comment"># 1. Connect to the AI Engine</span>
+client = genai.<span class="code-class">Client</span>(api_key=os.environ.<span class="code-function">get</span>(<span class="code-string">"GEMINI_API_KEY"</span>))
+
+<span class="code-comment"># 2. The Unstructured Data</span>
+messy_text = <span class="code-string">"""
+Hey class, the Midterm is set for Oct 15th at 10 AM. 
+Assignments are due a few days earlier on the 12th. 
+Also, final project presentations are scheduled for 
+Dec 8th right before winter break!
+"""</span>
+
+<span class="code-comment"># 3. The Extraction Process (Magic)</span>
+response = client.models.<span class="code-function">generate_content</span>(
+    model=<span class="code-string">"gemini-2.5-flash"</span>,
+    contents=messy_text,
+    config={
+        <span class="code-property">"system_instruction"</span>: <span class="code-string">"Extract events and dates. Output ONLY a valid JSON array. No markdown."</span>,
+        <span class="code-property">"response_mime_type"</span>: <span class="code-string">"application/json"</span>
+    }
+)
+
+<span class="code-function">print</span>(response.text)
+                </div>
+
+                <div id="code-demo-2" class="pl-10 pb-4 hidden whitespace-pre">
+<span class="code-keyword">import</span> os
+<span class="code-keyword">from</span> google <span class="code-keyword">import</span> genai
+
+<span class="code-comment"># 1. Connect to the AI Engine</span>
+client = genai.<span class="code-class">Client</span>(api_key=os.environ.<span class="code-function">get</span>(<span class="code-string">"GEMINI_API_KEY"</span>))
+
+<span class="code-comment"># 2. Knowledge Base (A mock Vector DB)</span>
+knowledge_base = [
+    <span class="code-string">"Guest Wi-Fi is 'Welcome2026'."</span>,
+    <span class="code-string">"The AI Lab is in Building 4, Room 402."</span>,
+    <span class="code-string">"Midterms are submitted via GitHub."</span>
+]
+
+<span class="code-comment"># 3. Retrieval Step (Finding the context)</span>
+query = <span class="code-string">"Where is the lab located?"</span>
+retrieved_context = knowledge_base[1] <span class="code-comment"># Simulating search</span>
+
+<span class="code-comment"># 4. Augmentation (Combining query + context)</span>
+prompt = <span class="code-string">f"Context: {retrieved_context}\n\nAnswer: {query}"</span>
+
+response = client.models.<span class="code-function">generate_content</span>(
+    model=<span class="code-string">"gemini-2.5-flash"</span>,
+    contents=prompt
+)
+
+<span class="code-function">print</span>(response.text)
+                </div>
+            </div>
+            
+            <!-- Execution Bar -->
+            <div class="bg-slate-900 border-t border-slate-800 p-3 flex justify-between items-center">
+                <div class="text-xs text-slate-500 font-mono flex items-center gap-2">
+                    <i data-lucide="info" class="w-4 h-4 text-slate-600"></i> Code is ready to run
+                </div>
+                <button onclick="runCode()" id="run-btn" class="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold rounded-lg shadow-[0_0_15px_rgba(217,119,6,0.4)] transition-all flex items-center gap-2">
+                    <i data-lucide="play" class="w-4 h-4"></i> Run Script
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: Terminal -->
+        <div class="w-full lg:w-2/5 flex flex-col bg-black rounded-2xl border border-slate-800 shadow-2xl overflow-hidden terminal-glow relative">
+            <div class="bg-slate-900/80 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
+                <span class="text-xs font-mono text-slate-500 flex items-center gap-2">
+                    <i data-lucide="terminal-square" class="w-4 h-4"></i> Terminal
+                </span>
+                <span class="text-[10px] uppercase tracking-widest text-emerald-500 font-bold px-2 py-1 bg-emerald-950/50 rounded border border-emerald-900/50 opacity-0 transition-opacity" id="status-badge">Success</span>
+            </div>
+            
+            <div class="p-5 font-mono text-sm flex-grow overflow-y-auto" id="terminal-content">
+                <div id="cmd-prompt" class="text-slate-300">
+                    <span class="text-emerald-400 font-bold">speaker@macbook</span><span class="text-white">:</span><span class="text-blue-400">~/demo</span><span class="text-white">$</span> 
+                    <span id="cursor" class="inline-block w-2 h-4 bg-slate-400 animate-blink align-middle ml-1"></span>
+                </div>
+
+                <div id="cmd-execution" class="hidden text-slate-300 mt-1">
+                    <span class="text-emerald-400 font-bold">speaker@macbook</span><span class="text-white">:</span><span class="text-blue-400">~/demo</span><span class="text-white">$</span> python extractor.py
+                </div>
+                
+                <div id="loader" class="hidden mt-4 text-slate-500 flex items-center gap-3 text-xs">
+                    <i data-lucide="loader" class="w-4 h-4 animate-spin text-amber-500"></i> Requesting inference from Gemini...
+                </div>
+
+                <div id="json-output" class="hidden mt-4 text-emerald-400 whitespace-pre-wrap font-mono leading-relaxed pb-4"></div>
+                
+                <div id="final-prompt" class="hidden mt-4 text-slate-300">
+                    <span class="text-emerald-400 font-bold">speaker@macbook</span><span class="text-white">:</span><span class="text-blue-400">~/demo</span><span class="text-white">$</span> <span class="inline-block w-2 h-4 bg-slate-400 animate-blink align-middle ml-1"></span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Post-Demo Takeaway -->
+    <footer class="relative z-10 w-full p-4 text-center opacity-0 transition-all duration-700 transform translate-y-4" id="takeaway-text">
+        <div class="bg-amber-950/40 border border-amber-900/50 inline-block px-8 py-4 rounded-xl glass-panel shadow-lg">
+            <p class="text-slate-300 text-lg font-light">
+                <span class="text-amber-400 font-bold">15 lines of code.</span> No complex Regex. No NLP pipelines. No machine learning models to train.<br/>
+                <span class="text-white font-medium mt-2 inline-block">This is the power of AI Engineering.</span>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Icons
+        window.addEventListener('load', () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            } else {
+                setTimeout(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }, 1000);
+            }
+        });
+
+        let isRunning = false;
+        let activeDemo = 1;
+
+        function switchDemo(demoId) {
+            if (isRunning) return;
+            activeDemo = demoId;
+            
+            const tab1 = document.getElementById('tab-demo-1');
+            const tab2 = document.getElementById('tab-demo-2');
+            const code1 = document.getElementById('code-demo-1');
+            const code2 = document.getElementById('code-demo-2');
+            const fileName = document.getElementById('file-name');
+            const takeaway = document.getElementById('takeaway-text');
+            const btn = document.getElementById('run-btn');
+            const cmdExecution = document.getElementById('cmd-execution');
+
+            // Reset execution state
+            document.getElementById('json-output').innerHTML = '';
+            document.getElementById('json-output').classList.add('hidden');
+            cmdExecution.classList.add('hidden');
+            document.getElementById('cmd-prompt').classList.remove('hidden');
+            document.getElementById('final-prompt').classList.add('hidden');
+            document.getElementById('status-badge').classList.remove('opacity-100');
+            takeaway.classList.add('opacity-0', 'translate-y-4');
+            takeaway.classList.remove('opacity-100', 'translate-y-0');
+            
+            btn.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> Run Script`;
+            btn.classList.remove('bg-slate-800', 'hover:bg-slate-700', 'border', 'border-slate-600');
+            btn.classList.add('bg-amber-600', 'hover:bg-amber-500', 'shadow-[0_0_15px_rgba(217,119,6,0.4)]', 'text-white');
+            lucide.createIcons();
+
+            if (demoId === 1) {
+                tab1.className = "flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-300 bg-amber-600/40 text-amber-100 shadow-[0_0_15px_rgba(217,119,6,0.15)] ring-1 ring-amber-500/50";
+                tab2.className = "flex-1 py-2 px-4 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-all duration-300";
+                code1.classList.remove('hidden');
+                code2.classList.add('hidden');
+                fileName.innerText = "extractor.py";
+                cmdExecution.innerHTML = `<span class="text-emerald-400 font-bold">speaker@macbook</span><span class="text-white">:</span><span class="text-blue-400">~/demo</span><span class="text-white">$</span> python extractor.py`;
+                takeaway.innerHTML = `
+                    <div class="bg-amber-950/40 border border-amber-900/50 inline-block px-8 py-4 rounded-xl glass-panel shadow-lg">
+                        <p class="text-slate-300 text-lg font-light">
+                            <span class="text-amber-400 font-bold">15 lines of code.</span> No complex Regex. No NLP pipelines. No machine learning models to train.<br/>
+                            <span class="text-white font-medium mt-2 inline-block">This is the power of AI Engineering.</span>
+                        </p>
+                    </div>`;
+            } else {
+                tab2.className = "flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-300 bg-amber-600/40 text-amber-100 shadow-[0_0_15px_rgba(217,119,6,0.15)] ring-1 ring-amber-500/50";
+                tab1.className = "flex-1 py-2 px-4 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-all duration-300";
+                code2.classList.remove('hidden');
+                code1.classList.add('hidden');
+                fileName.innerText = "simple_rag.py";
+                cmdExecution.innerHTML = `<span class="text-emerald-400 font-bold">speaker@macbook</span><span class="text-white">:</span><span class="text-blue-400">~/demo</span><span class="text-white">$</span> python simple_rag.py`;
+                takeaway.innerHTML = `
+                    <div class="bg-amber-950/40 border border-amber-900/50 inline-block px-8 py-4 rounded-xl glass-panel shadow-lg">
+                        <p class="text-slate-300 text-lg font-light">
+                            <span class="text-amber-400 font-bold">Context changes everything.</span> By injecting our own data into the prompt, we gave the AI instant knowledge.<br/>
+                            <span class="text-white font-medium mt-2 inline-block">This is how enterprise AI is actually built.</span>
+                        </p>
+                    </div>`;
+            }
+        }
+
+        async function runCode() {
+            if (isRunning) return;
+            isRunning = true;
+
+            const btn = document.getElementById('run-btn');
+            const cmdPrompt = document.getElementById('cmd-prompt');
+            const cmdExecution = document.getElementById('cmd-execution');
+            const loader = document.getElementById('loader');
+            const jsonOutput = document.getElementById('json-output');
+            const finalPrompt = document.getElementById('final-prompt');
+            const statusBadge = document.getElementById('status-badge');
+            const takeaway = document.getElementById('takeaway-text');
+            const terminalContent = document.getElementById('terminal-content');
+
+            // Reset UI
+            jsonOutput.innerHTML = '';
+            jsonOutput.classList.add('hidden');
+            finalPrompt.classList.add('hidden');
+            statusBadge.classList.remove('opacity-100');
+            takeaway.classList.remove('opacity-100', 'translate-y-0');
+            takeaway.classList.add('opacity-0', 'translate-y-4');
+            
+            // UI State: Running
+            btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Executing...`;
+            btn.classList.add('opacity-75', 'cursor-not-allowed', 'bg-slate-700', 'hover:bg-slate-700', 'text-slate-300');
+            btn.classList.remove('bg-amber-600', 'hover:bg-amber-500', 'text-white', 'shadow-[0_0_15px_rgba(217,119,6,0.4)]');
+            lucide.createIcons();
+
+            // Terminal animation
+            cmdPrompt.classList.add('hidden');
+            cmdExecution.classList.remove('hidden');
+            
+            await delay(400); // Simulate typing delay
+            
+            if (activeDemo === 2) {
+                // RAG simulated search step
+                jsonOutput.classList.remove('hidden');
+                jsonOutput.innerHTML = `<span class="text-slate-400 italic">[SEARCHING KNOWLEDGE BASE...]</span><br/>`;
+                await delay(800);
+                jsonOutput.innerHTML += `<span class="text-cyan-400">> Match found: "The AI Lab is in Building 4, Room 402."</span><br/><br/>`;
+                await delay(400);
+            }
+
+            loader.classList.remove('hidden');
+
+            await delay(1500); // Simulate network/inference delay
+            
+            loader.classList.add('hidden');
+            jsonOutput.classList.remove('hidden');
+
+            if (activeDemo === 1) {
+                // The JSON result we want to type out
+                const resultData = `[
+  {
+    "event": "Assignment Due",
+    "date": "2026-10-12"
+  },
+  {
+    "event": "Midterm Exam",
+    "date": "2026-10-15T10:00:00"
+  },
+  {
+    "event": "Final Project Presentation",
+    "date": "2026-12-08"
+  }
+]`;
+                
+                // Typing effect
+                for (let i = 0; i < resultData.length; i++) {
+                    // Determine color based on JSON structure
+                    let char = resultData.charAt(i);
+                    let coloredChar = char;
+                    
+                    // Extremely basic syntax highlighting for typing effect
+                    if (resultData.substring(i).startsWith('"event"')) { coloredChar = '<span class="text-blue-400">"event"</span>'; i+=6; }
+                    else if (resultData.substring(i).startsWith('"date"')) { coloredChar = '<span class="text-blue-400">"date"</span>'; i+=5; }
+                    else if (resultData.substring(i).startsWith('"Assignment Due"')) { coloredChar = '<span class="text-amber-300">"Assignment Due"</span>'; i+=15; }
+                    else if (resultData.substring(i).startsWith('"2026-10-12"')) { coloredChar = '<span class="text-amber-300">"2026-10-12"</span>'; i+=11; }
+                    else if (resultData.substring(i).startsWith('"Midterm Exam"')) { coloredChar = '<span class="text-amber-300">"Midterm Exam"</span>'; i+=13; }
+                    else if (resultData.substring(i).startsWith('"2026-10-15T10:00:00"')) { coloredChar = '<span class="text-amber-300">"2026-10-15T10:00:00"</span>'; i+=20; }
+                    else if (resultData.substring(i).startsWith('"Final Project Presentation"')) { coloredChar = '<span class="text-amber-300">"Final Project Presentation"</span>'; i+=27; }
+                    else if (resultData.substring(i).startsWith('"2026-12-08"')) { coloredChar = '<span class="text-amber-300">"2026-12-08"</span>'; i+=11; }
+
+                    jsonOutput.innerHTML += coloredChar;
+                    terminalContent.scrollTop = terminalContent.scrollHeight; // Auto-scroll
+                    
+                    // Varing typing speed for realism
+                    const typeDelay = (char === '\n' || char === '}' || char === '{') ? 60 : 15;
+                    await delay(typeDelay); 
+                }
+            } else {
+                // RAG text result typing
+                const resultData2 = "Based on the provided context, the AI Engineering lab is located in Building 4, Room 402.";
+                let textContainer = document.createElement('span');
+                textContainer.className = "text-emerald-400";
+                jsonOutput.appendChild(textContainer);
+
+                for (let i = 0; i < resultData2.length; i++) {
+                    textContainer.innerHTML += resultData2.charAt(i);
+                    terminalContent.scrollTop = terminalContent.scrollHeight;
+                    await delay(20); 
+                }
+            }
+
+            finalPrompt.classList.remove('hidden');
+            statusBadge.classList.add('opacity-100');
+            terminalContent.scrollTop = terminalContent.scrollHeight;
+
+            // Reset Button
+            btn.innerHTML = `<i data-lucide="rotate-ccw" class="w-4 h-4"></i> Run Again`;
+            btn.classList.remove('opacity-75', 'cursor-not-allowed', 'bg-slate-700', 'hover:bg-slate-700', 'text-slate-300');
+            btn.classList.add('bg-slate-800', 'hover:bg-slate-700', 'text-white', 'border', 'border-slate-600');
+            lucide.createIcons();
+
+            // Show Takeaway
+            setTimeout(() => {
+                takeaway.classList.remove('opacity-0', 'translate-y-4');
+                takeaway.classList.add('opacity-100', 'translate-y-0');
+            }, 500);
+
+            isRunning = false;
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function copyCode() {
+            // Simplified unformatted code for clipboard
+            let codeToCopy = ``;
+            if (activeDemo === 1) {
+                codeToCopy = `import os
+from google import genai
+
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+messy_text = """
+Hey class, the Midterm is set for Oct 15th at 10 AM. 
+Assignments are due a few days earlier on the 12th. 
+Also, final project presentations are scheduled for 
+Dec 8th right before winter break!
+"""
+
+response = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=messy_text,
+    config={
+        "system_instruction": "Extract events and dates. Output ONLY a valid JSON array. No markdown.",
+        "response_mime_type": "application/json"
+    }
+)
+
+print(response.text)`;
+            } else {
+                codeToCopy = `import os
+from google import genai
+
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+knowledge_base = [
+    "Guest Wi-Fi is 'Welcome2026'.",
+    "The AI Lab is in Building 4, Room 402.",
+    "Midterms are submitted via GitHub."
+]
+
+query = "Where is the lab located?"
+retrieved_context = knowledge_base[1]
+
+prompt = f"Context: {retrieved_context}\\n\\nAnswer: {query}"
+
+response = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=prompt
+)
+
+print(response.text)`;
+            }
+            
+            navigator.clipboard.writeText(codeToCopy).then(() => {
+                const btn = document.querySelector('.tooltip i');
+                btn.setAttribute('data-lucide', 'check');
+                btn.classList.add('text-emerald-400');
+                lucide.createIcons();
+                
+                setTimeout(() => {
+                    btn.setAttribute('data-lucide', 'copy');
+                    btn.classList.remove('text-emerald-400');
+                    lucide.createIcons();
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

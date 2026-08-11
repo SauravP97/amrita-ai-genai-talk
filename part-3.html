@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding LLM Augmentation: Tool Calling & RAG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0; /* Slate 200 */
+            scroll-behavior: smooth;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* Slate 800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* Slate 600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* Slate 500 */
+        }
+
+        /* Gradient Text Utilities */
+        .text-gradient-primary {
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .text-gradient-rag {
+            background: linear-gradient(to right, #34d399, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .text-gradient-tools {
+            background: linear-gradient(to right, #f472b6, #e879f9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Interactive Card Hover Effects */
+        .interactive-card {
+            transition: all 0.3s ease;
+            border: 1px solid #334155; /* Slate 700 */
+            background: rgba(30, 41, 59, 0.5); /* Slate 800 with opacity */
+            backdrop-filter: blur(10px);
+        }
+        .interactive-card:hover {
+            transform: translateY(-5px);
+            border-color: #475569;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Flow Diagram Animations */
+        .flow-line {
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: drawLine 2s linear forwards infinite;
+        }
+        @keyframes drawLine {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+        
+        .pulse-node {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .7; transform: scale(1.05); }
+        }
+
+        /* Terminal Mockup Style */
+        .terminal-window {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        .terminal-header {
+            background-color: #333;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .dot-red { background-color: #ff5f56; }
+        .dot-yellow { background-color: #ffbd2e; }
+        .dot-green { background-color: #27c93f; }
+        
+        .typing-effect {
+            overflow: hidden;
+            white-space: nowrap;
+            margin: 0 auto;
+            letter-spacing: .05em;
+            animation: typing 3.5s steps(40, end);
+        }
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-40 top-0 start-0 border-b border-slate-700 bg-slate-900/80 backdrop-blur-md">
+        <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+            <a href="#" class="flex items-center space-x-3 rtl:space-x-reverse">
+                <i class="fa-solid fa-microchip text-indigo-400 text-2xl"></i>
+                <span class="self-center text-xl font-semibold whitespace-nowrap text-white">LLM<span class="font-light text-slate-400">Augment</span></span>
+            </a>
+            <div class="flex md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse">
+                <button type="button" class="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm px-4 py-2 text-center" onclick="showDemoModal()">Try Demo</button>
+            </div>
+            <div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-sticky">
+                <ul class="flex flex-col p-4 md:p-0 mt-4 font-medium border border-slate-700 rounded-lg bg-slate-800 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-transparent">
+                    <li><a href="#intro" class="block py-2 px-3 text-white rounded hover:bg-slate-700 md:hover:bg-transparent md:hover:text-indigo-400 md:p-0 transition-colors">Introduction</a></li>
+                    <li><a href="#rag" class="block py-2 px-3 text-slate-300 rounded hover:bg-slate-700 md:hover:bg-transparent md:hover:text-emerald-400 md:p-0 transition-colors">RAG</a></li>
+                    <li><a href="#tools" class="block py-2 px-3 text-slate-300 rounded hover:bg-slate-700 md:hover:bg-transparent md:hover:text-pink-400 md:p-0 transition-colors">Tool Calling</a></li>
+                    <li><a href="#synergy" class="block py-2 px-3 text-slate-300 rounded hover:bg-slate-700 md:hover:bg-transparent md:hover:text-purple-400 md:p-0 transition-colors">Synergy</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="intro" class="pt-32 pb-20 px-4 max-w-7xl mx-auto flex flex-col items-center text-center">
+        <div class="inline-flex items-center px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-sm font-medium mb-6">
+            <span class="flex w-2 h-2 rounded-full bg-indigo-400 mr-2 pulse-node"></span>
+            Beyond Pre-training
+        </div>
+        <h1 class="mb-6 text-5xl font-extrabold tracking-tight leading-none md:text-6xl lg:text-7xl text-white">
+            Supercharging LLMs with <br class="hidden sm:block"/>
+            <span class="text-gradient-primary">External Knowledge & Actions</span>
+        </h1>
+        <p class="mb-8 text-lg font-normal text-slate-400 lg:text-xl sm:px-16 xl:px-48 max-w-4xl">
+            Large Language Models are powerful reasoners, but they are frozen in time and isolated from the real world. Discover how <strong>RAG</strong> gives them a memory, and <strong>Tool Calling</strong> gives them hands.
+        </p>
+        
+        <!-- Interactive Concept Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl mt-8">
+            
+            <!-- RAG Card -->
+            <div class="interactive-card rounded-2xl p-8 text-left cursor-pointer group" onclick="document.getElementById('rag').scrollIntoView();">
+                <div class="w-14 h-14 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-database text-emerald-400 text-2xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3 text-white"><span class="text-gradient-rag">Retrieval-Augmented Gen</span> (RAG)</h3>
+                <p class="text-slate-400 mb-4 line-clamp-3">Connects models to external databases to retrieve accurate, up-to-date information before answering, solving hallucinations and outdated training data.</p>
+                <span class="text-emerald-400 font-medium flex items-center group-hover:translate-x-2 transition-transform">
+                    Learn how RAG works <i class="fa-solid fa-arrow-right ml-2"></i>
+                </span>
+            </div>
+
+            <!-- Tool Calling Card -->
+            <div class="interactive-card rounded-2xl p-8 text-left cursor-pointer group" onclick="document.getElementById('tools').scrollIntoView();">
+                <div class="w-14 h-14 rounded-xl bg-pink-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-wrench text-pink-400 text-2xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3 text-white"><span class="text-gradient-tools">Tool Calling</span> (Function Calling)</h3>
+                <p class="text-slate-400 mb-4 line-clamp-3">Enables models to request the execution of external scripts, APIs, or software tools to perform calculations, fetch real-time data, or take actions.</p>
+                <span class="text-pink-400 font-medium flex items-center group-hover:translate-x-2 transition-transform">
+                    Explore Tool Calling <i class="fa-solid fa-arrow-right ml-2"></i>
+                </span>
+            </div>
+            
+        </div>
+    </section>
+
+    <!-- RAG Section -->
+    <section id="rag" class="py-20 px-4 border-t border-slate-800 bg-slate-900/50">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col lg:flex-row items-center gap-16">
+                
+                <!-- RAG Content -->
+                <div class="lg:w-1/2">
+                    <div class="inline-flex items-center px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-6">
+                        <i class="fa-solid fa-book-open mr-2"></i> The Knowledge Problem
+                    </div>
+                    <h2 class="text-4xl font-bold mb-6 text-white">Give your model an <span class="text-gradient-rag">Open Book</span></h2>
+                    
+                    <div class="space-y-6 text-slate-300 text-lg">
+                        <p>
+                            Without RAG, asking an LLM a question is like giving it a closed-book exam. It can only answer based on what it memorized during training (its parameters).
+                        </p>
+                        <p>
+                            <strong>Retrieval-Augmented Generation (RAG)</strong> changes this to an open-book exam. When a user asks a question, the system first searches an external knowledge base for relevant documents, then hands those documents to the LLM along with the original question.
+                        </p>
+                        
+                        <div class="bg-slate-800 rounded-lg p-5 border border-slate-700">
+                            <h4 class="text-white font-semibold mb-3 flex items-center">
+                                <i class="fa-solid fa-check-circle text-emerald-400 mr-2"></i> Key Benefits
+                            </h4>
+                            <ul class="space-y-2">
+                                <li class="flex items-start"><i class="fa-solid fa-angle-right text-emerald-500 mt-1 mr-2"></i> <span><strong>Reduces Hallucinations:</strong> The LLM grounds its answer in provided facts.</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-angle-right text-emerald-500 mt-1 mr-2"></i> <span><strong>Up-to-date Knowledge:</strong> Update the database, not the model weights.</span></li>
+                                <li class="flex items-start"><i class="fa-solid fa-angle-right text-emerald-500 mt-1 mr-2"></i> <span><strong>Private Data:</strong> Safely query internal company documents.</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RAG Interactive Flow -->
+                <div class="lg:w-1/2 w-full">
+                    <div class="interactive-card rounded-2xl p-6 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 bg-slate-800 px-3 py-1 rounded-bl-lg text-xs font-mono text-slate-400 border-b border-l border-slate-700">RAG Architecture</div>
+                        
+                        <!-- SVG Diagram -->
+                        <div class="mt-8 flex justify-center h-80">
+                            <svg viewBox="0 0 400 300" class="w-full h-full" id="rag-svg">
+                                <!-- User -->
+                                <circle cx="50" cy="50" r="20" fill="#3b82f6" class="pulse-node"/>
+                                <text x="50" y="85" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">User</text>
+                                
+                                <!-- Query Path to Retriever -->
+                                <path d="M 70 50 L 180 50" stroke="#3b82f6" stroke-width="2" fill="none" stroke-dasharray="5,5" class="flow-line"/>
+                                <text x="125" y="40" text-anchor="middle" fill="#60a5fa" font-size="10" font-family="sans-serif">1. Query</text>
+
+                                <!-- Retriever -->
+                                <rect x="180" y="20" width="80" height="60" rx="8" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+                                <text x="220" y="55" text-anchor="middle" fill="#34d399" font-size="12" font-family="sans-serif" font-weight="bold">Retriever</text>
+
+                                <!-- Database -->
+                                <path d="M 330 30 C 330 20, 370 20, 370 30 L 370 70 C 370 80, 330 80, 330 70 Z" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+                                <path d="M 330 30 C 330 40, 370 40, 370 30" fill="none" stroke="#10b981" stroke-width="2"/>
+                                <text x="350" y="55" text-anchor="middle" fill="#34d399" font-size="10" font-family="sans-serif">Vector DB</text>
+
+                                <!-- Retrieve Path -->
+                                <path d="M 260 40 L 330 40" stroke="#10b981" stroke-width="2" fill="none"/>
+                                <path d="M 330 60 L 260 60" stroke="#10b981" stroke-width="2" fill="none" stroke-dasharray="5,5" class="flow-line"/>
+                                <text x="295" y="30" text-anchor="middle" fill="#34d399" font-size="10" font-family="sans-serif">Search</text>
+
+                                <!-- Prompt Construction Path -->
+                                <path d="M 220 80 L 220 180" stroke="#10b981" stroke-width="2" fill="none" stroke-dasharray="5,5" class="flow-line"/>
+                                <text x="260" y="130" text-anchor="middle" fill="#34d399" font-size="10" font-family="sans-serif">2. Context + Query</text>
+
+                                <!-- LLM -->
+                                <rect x="180" y="180" width="80" height="60" rx="8" fill="#1e293b" stroke="#818cf8" stroke-width="2"/>
+                                <text x="220" y="215" text-anchor="middle" fill="#818cf8" font-size="14" font-family="sans-serif" font-weight="bold">LLM</text>
+
+                                <!-- Answer Path -->
+                                <path d="M 180 210 L 50 210 L 50 70" stroke="#818cf8" stroke-width="2" fill="none" stroke-dasharray="5,5" class="flow-line"/>
+                                <text x="115" y="200" text-anchor="middle" fill="#818cf8" font-size="10" font-family="sans-serif">3. Grounded Answer</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Tool Calling Section -->
+    <section id="tools" class="py-20 px-4 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col-reverse lg:flex-row items-center gap-16">
+                
+                <!-- Tool Interactive Terminal -->
+                <div class="lg:w-1/2 w-full">
+                    <div class="terminal-window shadow-2xl shadow-pink-900/20">
+                        <div class="terminal-header">
+                            <div class="terminal-dot dot-red"></div>
+                            <div class="terminal-dot dot-yellow"></div>
+                            <div class="terminal-dot dot-green"></div>
+                            <div class="ml-4 text-xs font-mono text-slate-400">agent_execution.log</div>
+                        </div>
+                        <div class="p-4 font-mono text-sm h-80 overflow-y-auto bg-black text-slate-300" id="terminal-content">
+                            <!-- Terminal content generated by JS -->
+                            <div class="text-slate-500 mb-2"># System Initialized. Tools loaded: [get_weather, calculate_math, query_db]</div>
+                            <div class="mb-4">
+                                <span class="text-blue-400">User:</span> What is the weather in Tokyo right now?
+                            </div>
+                            
+                            <div class="mb-4 pl-4 border-l-2 border-slate-700 opacity-0 transition-opacity duration-500" id="step-1">
+                                <span class="text-purple-400">LLM Reasoning:</span> To answer this, I need real-time data. I will use the `get_weather` tool.
+                                <div class="mt-2 text-pink-400 font-bold">
+                                    > CALL TOOL: get_weather({"location": "Tokyo, Japan"})
+                                </div>
+                            </div>
+
+                            <div class="mb-4 pl-4 border-l-2 border-slate-700 opacity-0 transition-opacity duration-500" id="step-2">
+                                <span class="text-emerald-400">Tool Result:</span> {"temp_c": 18, "condition": "Partly Cloudy", "humidity": 65}
+                            </div>
+
+                            <div class="mb-2 opacity-0 transition-opacity duration-500" id="step-3">
+                                <span class="text-blue-400">LLM Response:</span> The current weather in Tokyo is 18°C and partly cloudy, with a humidity of 65%.
+                            </div>
+                            
+                            <button id="run-terminal-btn" class="mt-6 px-4 py-1 text-xs border border-slate-600 rounded hover:bg-slate-800 transition-colors" onclick="runTerminalAnimation()">
+                                <i class="fa-solid fa-play mr-1"></i> Replay Execution
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tool Content -->
+                <div class="lg:w-1/2">
+                    <div class="inline-flex items-center px-3 py-1 rounded-full border border-pink-500/30 bg-pink-500/10 text-pink-300 text-xs font-bold uppercase tracking-wider mb-6">
+                        <i class="fa-solid fa-plug mr-2"></i> The Action Problem
+                    </div>
+                    <h2 class="text-4xl font-bold mb-6 text-white">Give your model <span class="text-gradient-tools">Digital Hands</span></h2>
+                    
+                    <div class="space-y-6 text-slate-300 text-lg">
+                        <p>
+                            Language models natively just predict the next word. They cannot browse the web, calculate precise math, or execute code. 
+                        </p>
+                        <p>
+                            <strong>Tool Calling</strong> (or Function Calling) bridges this gap. You provide the LLM with a list of "tools" (functions) and their descriptions. The model is trained to recognize when it needs a tool, halt its text generation, and instead output a structured request to call that tool.
+                        </p>
+                        
+                        <div class="bg-slate-800 rounded-lg p-5 border border-slate-700">
+                            <h4 class="text-white font-semibold mb-3 flex items-center">
+                                <i class="fa-solid fa-gears text-pink-400 mr-2"></i> Common Use Cases
+                            </h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="flex flex-col">
+                                    <span class="text-white font-medium text-sm">APIs</span>
+                                    <span class="text-sm text-slate-400">Fetching weather, stocks, or sending emails.</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-white font-medium text-sm">Math/Logic</span>
+                                    <span class="text-sm text-slate-400">Using Python REPL for exact calculations.</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-white font-medium text-sm">Database</span>
+                                    <span class="text-sm text-slate-400">Generating and executing SQL queries.</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-white font-medium text-sm">Web Search</span>
+                                    <span class="text-sm text-slate-400">Searching Google for latest news.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Synergy / Agents Section -->
+    <section id="synergy" class="py-20 px-4 border-t border-slate-800 bg-gradient-to-b from-slate-900 to-indigo-950">
+        <div class="max-w-5xl mx-auto text-center">
+            <h2 class="text-4xl font-bold mb-6 text-white">The Synergy: <span class="text-purple-400">AI Agents</span></h2>
+            <p class="text-xl text-slate-300 mb-12 max-w-3xl mx-auto">
+                When you combine RAG (knowledge) with Tool Calling (action), you graduate from simple chatbots to autonomous <strong>Agents</strong>.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- RAG Block -->
+                <div class="bg-slate-800/80 rounded-xl p-6 border border-slate-700 relative">
+                    <div class="text-emerald-400 mb-4"><i class="fa-solid fa-brain text-4xl"></i></div>
+                    <h3 class="text-xl font-bold text-white mb-2">Memory (RAG)</h3>
+                    <p class="text-sm text-slate-400">Agent remembers past interactions and accesses domain-specific knowledge bases.</p>
+                    
+                    <!-- Connector arrow -->
+                    <div class="hidden md:block absolute top-1/2 -right-6 transform -translate-y-1/2 text-slate-600 text-2xl">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                </div>
+
+                <!-- LLM Block -->
+                <div class="bg-indigo-900/50 rounded-xl p-6 border border-indigo-700 transform scale-105 shadow-xl shadow-indigo-900/50 relative z-10">
+                    <div class="text-indigo-400 mb-4"><i class="fa-solid fa-microchip text-4xl pulse-node"></i></div>
+                    <h3 class="text-xl font-bold text-white mb-2">Reasoning Engine</h3>
+                    <p class="text-sm text-slate-300">The LLM acts as the orchestrator, deciding <em>what</em> needs to be known and <em>which</em> actions to take to solve the prompt.</p>
+                    
+                    <!-- Connector arrow -->
+                    <div class="hidden md:block absolute top-1/2 -right-6 transform -translate-y-1/2 text-slate-600 text-2xl">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Tools Block -->
+                <div class="bg-slate-800/80 rounded-xl p-6 border border-slate-700">
+                    <div class="text-pink-400 mb-4"><i class="fa-solid fa-toolbox text-4xl"></i></div>
+                    <h3 class="text-xl font-bold text-white mb-2">Actuators (Tools)</h3>
+                    <p class="text-sm text-slate-400">Agent executes code, calls APIs, or writes to databases to fulfill the user's intent.</p>
+                </div>
+            </div>
+            
+            <div class="mt-16 bg-slate-800/50 border border-slate-700 rounded-2xl p-8 text-left inline-block w-full max-w-3xl">
+                <h4 class="text-white font-bold text-lg mb-4"><i class="fa-solid fa-code text-indigo-400 mr-2"></i> Example Concept: The "Research Agent"</h4>
+                <div class="font-mono text-sm text-slate-300 space-y-2">
+                    <p class="text-blue-300">User: "Write a report on the latest Q3 earnings of Apple and compare it to their historical data."</p>
+                    <p class="pl-4 border-l-2 border-slate-600">1. <span class="text-pink-400">Tool Call</span>: <code>web_search("Apple Q3 earnings summary")</code></p>
+                    <p class="pl-4 border-l-2 border-slate-600">2. <span class="text-emerald-400">RAG Query</span>: <code>vector_search("Apple historical financial performance Q3")</code></p>
+                    <p class="pl-4 border-l-2 border-slate-600">3. <span class="text-pink-400">Tool Call</span>: <code>python_repl("calculate percentage difference...")</code></p>
+                    <p class="pl-4 border-l-2 border-slate-600">4. <span class="text-indigo-300">Synthesize & Generate Report</span></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 text-center border-t border-slate-800 bg-slate-950 text-slate-500 text-sm">
+        <p>Built for demonstrating LLM Concepts. Interactive Elements generated via JS.</p>
+    </footer>
+
+    <!-- Interactive Demo Modal -->
+    <div id="demo-modal" class="modal-overlay">
+        <div class="modal-content flex flex-col h-[80vh]">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-flask text-indigo-400 mr-2"></i> Interactive Sandbox</h3>
+                <button onclick="hideDemoModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <p class="text-sm text-slate-400 mb-4">Simulate how an LLM handles queries requiring RAG or Tools.</p>
+            
+            <!-- Chat Interface -->
+            <div class="flex-1 bg-slate-900 rounded-lg border border-slate-700 overflow-hidden flex flex-col">
+                <!-- Message Area -->
+                <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4">
+                    <div class="flex">
+                        <div class="bg-indigo-900/50 border border-indigo-700/50 text-slate-200 rounded-lg rounded-tl-none p-3 max-w-[85%] text-sm">
+                            Hello! I am a simulated agent equipped with a <strong>Database (RAG)</strong> containing internal company policies, and a <strong>Calculator Tool</strong>. Try asking me:
+                            <ul class="list-disc pl-4 mt-2 text-slate-400 text-xs">
+                                <li>"What is our work from home policy?" (Triggers RAG)</li>
+                                <li>"What is 2345 multiplied by 876?" (Triggers Tool)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Input Area -->
+                <div class="p-3 border-t border-slate-700 bg-slate-800 flex gap-2">
+                    <input type="text" id="user-input" class="flex-1 bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500" placeholder="Type your message here..." onkeypress="handleEnter(event)">
+                    <button onclick="processInput()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Terminal Animation Logic ---
+        function runTerminalAnimation() {
+            const step1 = document.getElementById('step-1');
+            const step2 = document.getElementById('step-2');
+            const step3 = document.getElementById('step-3');
+            const btn = document.getElementById('run-terminal-btn');
+
+            // Reset
+            step1.style.opacity = '0';
+            step2.style.opacity = '0';
+            step3.style.opacity = '0';
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // Sequence
+            setTimeout(() => { step1.style.opacity = '1'; }, 500);
+            setTimeout(() => { step2.style.opacity = '1'; }, 2000);
+            setTimeout(() => { 
+                step3.style.opacity = '1'; 
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }, 3500);
+        }
+
+        // Run terminal animation on load if in view, or just after a delay
+        setTimeout(runTerminalAnimation, 1000);
+
+
+        // --- Modal & Mock Agent Logic ---
+        const modal = document.getElementById('demo-modal');
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+
+        function showDemoModal() {
+            modal.classList.add('active');
+            userInput.focus();
+        }
+
+        function hideDemoModal() {
+            modal.classList.remove('active');
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') {
+                processInput();
+            }
+        }
+
+        function appendMessage(content, type) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex ${type === 'user' ? 'justify-end' : 'justify-start'}`;
+            
+            let innerHTML = '';
+            
+            if (type === 'user') {
+                innerHTML = `<div class="bg-indigo-600 text-white rounded-lg rounded-tr-none p-3 max-w-[85%] text-sm">${content}</div>`;
+            } else if (type === 'system') {
+                // Formatting for thoughts/tool calls
+                innerHTML = `<div class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg rounded-tl-none p-3 max-w-[85%] text-sm font-mono text-xs w-full">${content}</div>`;
+            } else {
+                // Normal AI response
+                innerHTML = `<div class="bg-indigo-900/50 border border-indigo-700/50 text-slate-200 rounded-lg rounded-tl-none p-3 max-w-[85%] text-sm">${content}</div>`;
+            }
+            
+            wrapper.innerHTML = innerHTML;
+            chatMessages.appendChild(wrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Mock database and math logic
+        async function processInput() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            appendMessage(text, 'user');
+            userInput.value = '';
+            userInput.disabled = true;
+
+            const lowerText = text.toLowerCase();
+            
+            // Simulate processing delay
+            await new Promise(r => setTimeout(r, 500));
+
+            if (lowerText.includes('policy') || lowerText.includes('work from home') || lowerText.includes('wfh')) {
+                // Simulate RAG
+                appendMessage(`<span class="text-slate-500">Agent Thought: User is asking about internal policies. I need to search the vector database.</span><br><br><span class="text-emerald-400">> EXECUTING: vector_search(query="${text}")</span>`, 'system');
+                
+                await new Promise(r => setTimeout(r, 1200));
+                
+                appendMessage(`<span class="text-slate-400">Retrieved Context:</span><br>"Section 4.2: Employees are permitted to work from home up to 3 days a week. Core hours in-office are Tue-Thu."`, 'system');
+                
+                await new Promise(r => setTimeout(r, 800));
+                
+                appendMessage('Based on the company policy retrieved from the knowledge base, you are permitted to work from home up to 3 days a week. However, you are expected to be in the office during core days which are Tuesday through Thursday.', 'ai');
+
+            } else if (lowerText.includes('multiply') || lowerText.includes('*') || /\d+\s*x\s*\d+/.test(lowerText) || (lowerText.includes('what is') && /\d/.test(lowerText))) {
+                // Simulate Tool Calling (Math)
+                // Extract numbers roughly
+                const numbers = text.match(/\d+/g);
+                
+                if(numbers && numbers.length >= 2) {
+                    const n1 = parseInt(numbers[0]);
+                    const n2 = parseInt(numbers[1]);
+                    
+                    appendMessage(`<span class="text-slate-500">Agent Thought: The user is asking for a mathematical calculation. LLMs are bad at exact math, I should use the calculator tool.</span><br><br><span class="text-pink-400">> EXECUTING: tool_calculator(operation="multiply", a=${n1}, b=${n2})</span>`, 'system');
+                    
+                    await new Promise(r => setTimeout(r, 1000));
+                    
+                    const result = n1 * n2;
+                    appendMessage(`<span class="text-slate-400">Tool Result:</span> ${result}`, 'system');
+                    
+                    await new Promise(r => setTimeout(r, 800));
+                    
+                    appendMessage(`Using the calculator tool, ${n1} multiplied by ${n2} is ${result.toLocaleString()}.`, 'ai');
+                } else {
+                     appendMessage("I couldn't identify the numbers to calculate. Could you format it like 'multiply X and Y'?", 'ai');
+                }
+            } else {
+                // Standard fallback
+                appendMessage(`<span class="text-slate-500">Agent Thought: This seems like a general conversational query. No tools or RAG needed.</span>`, 'system');
+                await new Promise(r => setTimeout(r, 600));
+                appendMessage("I am a simulated agent focused on demonstrating RAG (internal knowledge) and Tool Calling (math). Try asking me about our 'work from home policy' or to multiply two large numbers!", 'ai');
+            }
+
+            userInput.disabled = false;
+            userInput.focus();
+        }
+    </script>
+</body>
+</html>

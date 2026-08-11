@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Routing | AI Engineering Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'data-flow': 'dataFlow 1s linear infinite',
+                    },
+                    keyframes: {
+                        'fadeInUp': {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        'dataFlow': {
+                            '0%': { strokeDashoffset: '24' },
+                            '100%': { strokeDashoffset: '0' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617; /* slate-950 */
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 1); }
+
+        /* Routing Flow Lines */
+        .svg-connector {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .route-path {
+            stroke: rgba(100, 116, 139, 0.3);
+            stroke-width: 2;
+            fill: none;
+            transition: all 0.4s ease;
+        }
+
+        .route-path.active {
+            stroke-width: 3;
+            stroke-dasharray: 8 4;
+            animation: dataFlow 0.5s linear infinite;
+        }
+
+        /* Active Route Colors */
+        .route-path.active-code { stroke: #38bdf8; } /* sky-400 */
+        .route-path.active-support { stroke: #fb7185; } /* rose-400 */
+        .route-path.active-rag { stroke: #34d399; } /* emerald-400 */
+        .route-path.active-chat { stroke: #fbbf24; } /* amber-400 */
+
+        /* Agent Card Active States */
+        .agent-card { transition: all 0.4s ease; z-index: 10; position: relative; }
+        .agent-card.active-code { box-shadow: 0 0 30px -5px rgba(56, 189, 248, 0.4); border-color: rgba(56, 189, 248, 0.6); transform: translateY(-4px); }
+        .agent-card.active-support { box-shadow: 0 0 30px -5px rgba(251, 113, 133, 0.4); border-color: rgba(251, 113, 133, 0.6); transform: translateY(-4px); }
+        .agent-card.active-rag { box-shadow: 0 0 30px -5px rgba(52, 211, 153, 0.4); border-color: rgba(52, 211, 153, 0.6); transform: translateY(-4px); }
+        .agent-card.active-chat { box-shadow: 0 0 30px -5px rgba(251, 191, 36, 0.4); border-color: rgba(251, 191, 36, 0.6); transform: translateY(-4px); }
+        
+        .agent-card.dimmed { opacity: 0.3; filter: grayscale(80%); }
+
+        .typing-cursor::after {
+            content: '▌';
+            animation: blink 1s step-start infinite;
+            color: #a78bfa;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-indigo-500/30">
+
+    <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-[0%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-900/10 blur-[150px] mix-blend-screen"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-violet-900/10 blur-[120px] mix-blend-screen"></div>
+    </div>
+
+    <nav class="relative z-50 w-full px-6 py-4 flex items-center justify-between glass-panel border-b-0 border-b-white/5 sticky top-0">
+        <div class="flex items-center gap-2 text-indigo-400 font-bold tracking-tight text-xl">
+            <i data-lucide="git-merge" class="w-6 h-6"></i> Agent_Routing
+        </div>
+        <div class="hidden md:flex gap-6 text-sm font-medium text-slate-400">
+            <a href="#concept" class="hover:text-white transition-colors">1. The Concept</a>
+            <a href="#interactive" class="hover:text-white transition-colors">2. Interactive Router</a>
+            <a href="#architecture" class="hover:text-white transition-colors">3. Architecture</a>
+        </div>
+    </nav>
+
+    <main class="relative z-10 flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-24">
+        
+        <section id="concept" class="text-center pt-8 pb-4 opacity-0 animate-fade-in-up">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-indigo-300 text-xs font-semibold tracking-wide mb-6 uppercase shadow-[0_0_15px_rgba(99,102,241,0.15)] border border-indigo-500/20">
+                <i data-lucide="network" class="w-4 h-4"></i> Agent Design Patterns
+            </div>
+            <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6">
+                The <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">Routing</span> Pattern
+            </h1>
+            <p class="text-lg text-slate-400 font-light max-w-3xl mx-auto leading-relaxed">
+                One massive prompt to handle everything is slow, expensive, and unreliable. <strong>Routing</strong> acts as the intelligent traffic controller of your application, analyzing user intent and instantly directing it to a smaller, highly specialized expert agent.
+            </p>
+        </section>
+
+        <section id="interactive" class="scroll-mt-24 opacity-0 animate-fade-in-up" style="animation-delay: 0.2s;">
+            <div class="glass-panel rounded-2xl border border-slate-700/50 shadow-2xl p-6 md:p-10 relative">
+                
+                <!-- Query Inputs -->
+                <div class="mb-12 max-w-2xl mx-auto text-center z-20 relative">
+                    <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center justify-center gap-2">
+                        <i data-lucide="message-square" class="w-4 h-4"></i> 1. Select User Input
+                    </h3>
+                    <div class="flex flex-wrap justify-center gap-3">
+                        <button onclick="processRoute('code')" class="query-btn px-4 py-2 bg-slate-800 hover:bg-sky-900/50 hover:text-sky-300 border border-slate-700 hover:border-sky-500/50 rounded-lg text-sm text-slate-300 transition-all">
+                            "Write a Python script to scrape a website"
+                        </button>
+                        <button onclick="processRoute('support')" class="query-btn px-4 py-2 bg-slate-800 hover:bg-rose-900/50 hover:text-rose-300 border border-slate-700 hover:border-rose-500/50 rounded-lg text-sm text-slate-300 transition-all">
+                            "My order #8922 arrived damaged yesterday"
+                        </button>
+                        <button onclick="processRoute('rag')" class="query-btn px-4 py-2 bg-slate-800 hover:bg-emerald-900/50 hover:text-emerald-300 border border-slate-700 hover:border-emerald-500/50 rounded-lg text-sm text-slate-300 transition-all">
+                            "What is our company policy on remote work?"
+                        </button>
+                        <button onclick="processRoute('chat')" class="query-btn px-4 py-2 bg-slate-800 hover:bg-amber-900/50 hover:text-amber-300 border border-slate-700 hover:border-amber-500/50 rounded-lg text-sm text-slate-300 transition-all">
+                            "Tell me a joke about a programmer"
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SVG Connections (Rendered Behind Elements) -->
+                <svg class="svg-connector" id="routing-svg" preserveAspectRatio="none">
+                    <!-- Lines will be drawn dynamically via JS based on element positions -->
+                    <path id="path-code" class="route-path" d="" />
+                    <path id="path-support" class="route-path" d="" />
+                    <path id="path-rag" class="route-path" d="" />
+                    <path id="path-chat" class="route-path" d="" />
+                </svg>
+
+                <!-- The Router Node -->
+                <div class="flex justify-center mb-16 z-20 relative">
+                    <div id="router-node" class="bg-indigo-950 border-2 border-indigo-500/50 rounded-xl p-4 w-64 text-center shadow-[0_0_30px_rgba(99,102,241,0.2)] transition-all duration-300 relative">
+                        <div id="router-spinner" class="absolute -top-3 -right-3 w-8 h-8 bg-slate-900 rounded-full border border-slate-700 flex items-center justify-center hidden">
+                            <i data-lucide="loader-2" class="w-4 h-4 text-indigo-400 animate-spin"></i>
+                        </div>
+                        <i data-lucide="cpu" class="w-8 h-8 text-indigo-400 mx-auto mb-2"></i>
+                        <h2 class="font-bold text-white tracking-wide">Intent Router</h2>
+                        <p class="text-[10px] font-mono text-indigo-300/70 mt-1 uppercase" id="router-status">Waiting for input...</p>
+                    </div>
+                </div>
+
+                <!-- Destination Agents -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 z-20 relative" id="agent-container">
+                    
+                    <!-- Code Agent -->
+                    <div id="agent-code" class="agent-card bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col items-center text-center">
+                        <div class="w-10 h-10 rounded-full bg-sky-900/30 flex items-center justify-center border border-sky-500/30 text-sky-400 mb-3">
+                            <i data-lucide="code-2" class="w-5 h-5"></i>
+                        </div>
+                        <h4 class="font-semibold text-slate-200 text-sm">Code_Gen_Agent</h4>
+                        <div class="text-[10px] text-slate-500 mt-2 font-mono bg-slate-950 p-1.5 rounded w-full border border-slate-800">
+                            Tools: [Python_Exec, GitHub_Search]
+                        </div>
+                    </div>
+
+                    <!-- Support Agent -->
+                    <div id="agent-support" class="agent-card bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col items-center text-center">
+                        <div class="w-10 h-10 rounded-full bg-rose-900/30 flex items-center justify-center border border-rose-500/30 text-rose-400 mb-3">
+                            <i data-lucide="headphones" class="w-5 h-5"></i>
+                        </div>
+                        <h4 class="font-semibold text-slate-200 text-sm">Support_Agent</h4>
+                        <div class="text-[10px] text-slate-500 mt-2 font-mono bg-slate-950 p-1.5 rounded w-full border border-slate-800">
+                            Tools: [Zendesk_API, Refund_DB]
+                        </div>
+                    </div>
+
+                    <!-- RAG Agent -->
+                    <div id="agent-rag" class="agent-card bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col items-center text-center">
+                        <div class="w-10 h-10 rounded-full bg-emerald-900/30 flex items-center justify-center border border-emerald-500/30 text-emerald-400 mb-3">
+                            <i data-lucide="database" class="w-5 h-5"></i>
+                        </div>
+                        <h4 class="font-semibold text-slate-200 text-sm">Internal_RAG_Agent</h4>
+                        <div class="text-[10px] text-slate-500 mt-2 font-mono bg-slate-950 p-1.5 rounded w-full border border-slate-800">
+                            Tools: [Vector_Search, Notion_API]
+                        </div>
+                    </div>
+
+                    <!-- Chat Agent -->
+                    <div id="agent-chat" class="agent-card bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col items-center text-center">
+                        <div class="w-10 h-10 rounded-full bg-amber-900/30 flex items-center justify-center border border-amber-500/30 text-amber-400 mb-3">
+                            <i data-lucide="message-circle" class="w-5 h-5"></i>
+                        </div>
+                        <h4 class="font-semibold text-slate-200 text-sm">Chit_Chat_Model</h4>
+                        <div class="text-[10px] text-slate-500 mt-2 font-mono bg-slate-950 p-1.5 rounded w-full border border-slate-800">
+                            Model: gemini-2.5-flash (Fast)
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Trace Log Terminal -->
+                <div class="mt-12 bg-black border border-slate-800 rounded-xl overflow-hidden z-20 relative shadow-lg">
+                    <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
+                        <span class="text-xs font-mono text-slate-500 flex items-center gap-2">
+                            <i data-lucide="terminal-square" class="w-4 h-4"></i> Router_Trace_Log
+                        </span>
+                        <button onclick="resetSimulation()" class="text-[10px] text-slate-500 hover:text-white uppercase transition-colors">Clear</button>
+                    </div>
+                    <div class="p-4 font-mono text-sm h-32 overflow-y-auto" id="trace-log">
+                        <div class="text-slate-600 italic">System initialized. Awaiting user input to determine routing path...</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="architecture" class="scroll-mt-24 border-t border-slate-800/50 pt-16 pb-20 opacity-0 animate-fade-in-up" style="animation-delay: 0.4s;">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-white mb-4">How do we build the Router?</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto text-sm leading-relaxed">
+                    There are two primary ways to implement a routing layer in an AI application. The choice depends on your latency requirements and complexity.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Logical Routing -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700/50 group hover:border-indigo-500/50 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-2 bg-indigo-900/30 rounded-lg text-indigo-400 border border-indigo-700/50 group-hover:scale-110 transition-transform"><i data-lucide="brain-circuit" class="w-5 h-5"></i></div>
+                        <h3 class="text-xl font-bold text-white">Logical Routing (LLM-based)</h3>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-4 leading-relaxed">
+                        Uses a fast, cheap LLM (like Gemini Flash) provided with a strict prompt and <code>response_schema</code>. It reads the input and outputs a structured JSON response deciding the category.
+                    </p>
+                    <div class="bg-slate-900 rounded-lg p-4 border border-slate-800 font-mono text-xs text-slate-300">
+                        <span class="text-slate-500">// System Prompt Example</span><br>
+                        Analyze the user input and classify the intent into one of the following exact strings: ["code", "support", "rag", "chat"].<br><br>
+                        Input: "Write a python script..."<br>
+                        Output: <span class="text-sky-400">"code"</span>
+                    </div>
+                    <ul class="mt-4 text-xs space-y-2">
+                        <li class="flex items-center gap-2 text-emerald-400"><i data-lucide="check" class="w-3 h-3"></i> Highly accurate, can reason through ambiguity.</li>
+                        <li class="flex items-center gap-2 text-rose-400"><i data-lucide="x" class="w-3 h-3"></i> Slower (adds LLM inference time overhead).</li>
+                    </ul>
+                </div>
+
+                <!-- Semantic Routing -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700/50 group hover:border-violet-500/50 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-2 bg-violet-900/30 rounded-lg text-violet-400 border border-violet-700/50 group-hover:scale-110 transition-transform"><i data-lucide="scatter-chart" class="w-5 h-5"></i></div>
+                        <h3 class="text-xl font-bold text-white">Semantic Routing (Vector-based)</h3>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-4 leading-relaxed">
+                        Converts the user query into a vector embedding. It then calculates the mathematical distance between the query and pre-defined embedding clusters for each route.
+                    </p>
+                    <div class="bg-slate-900 rounded-lg p-4 border border-slate-800 font-mono text-xs text-slate-300">
+                        <span class="text-slate-500">// Vector Similarity Example</span><br>
+                        User_Embed = get_embedding("My order #8922...")<br><br>
+                        distance_to_support = cosine_sim(User_Embed, Support_Cluster)<br>
+                        distance_to_code = cosine_sim(User_Embed, Code_Cluster)<br><br>
+                        <span class="text-rose-400">Route -> Max Similarity (Support)</span>
+                    </div>
+                    <ul class="mt-4 text-xs space-y-2">
+                        <li class="flex items-center gap-2 text-emerald-400"><i data-lucide="check" class="w-3 h-3"></i> Lightning fast, almost zero latency.</li>
+                        <li class="flex items-center gap-2 text-rose-400"><i data-lucide="x" class="w-3 h-3"></i> Less flexible with highly nuanced or mixed intents.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Initialize Icons
+        window.addEventListener('load', () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            // Intersection Observer for animations
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.animationPlayState = 'running';
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.animate-fade-in-up').forEach(el => {
+                el.style.animationPlayState = 'paused';
+                observer.observe(el);
+            });
+
+            // Initial SVG path drawing
+            drawConnections();
+            window.addEventListener('resize', drawConnections);
+        });
+
+        // SVG Path Calculation Function
+        function drawConnections() {
+            const router = document.getElementById('router-node');
+            const svg = document.getElementById('routing-svg');
+            
+            // Adjust SVG box to match container
+            const container = svg.parentElement;
+            svg.setAttribute('width', container.offsetWidth);
+            svg.setAttribute('height', container.offsetHeight);
+
+            const getCenter = (el) => {
+                const rect = el.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                return {
+                    x: rect.left - containerRect.left + (rect.width / 2),
+                    y: (rect.top - containerRect.top + (rect.height / 2)) + 30 // adjust y slightly down from router center
+                };
+            };
+
+            const getTopCenter = (el) => {
+                const rect = el.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                return {
+                    x: rect.left - containerRect.left + (rect.width / 2),
+                    y: rect.top - containerRect.top
+                };
+            };
+
+            const routerPos = getCenter(router);
+            const agents = ['code', 'support', 'rag', 'chat'];
+
+            agents.forEach(agent => {
+                const el = document.getElementById(`agent-${agent}`);
+                const agentPos = getTopCenter(el);
+                const path = document.getElementById(`path-${agent}`);
+                
+                // Draw a curved bezier path
+                const curveY = routerPos.y + (agentPos.y - routerPos.y) / 2;
+                const d = `M ${routerPos.x} ${routerPos.y} C ${routerPos.x} ${curveY}, ${agentPos.x} ${curveY}, ${agentPos.x} ${agentPos.y - 10}`;
+                path.setAttribute('d', d);
+            });
+        }
+
+        let isRouting = false;
+
+        async function processRoute(routeId) {
+            if (isRouting) return;
+            isRouting = true;
+            resetVisuals();
+
+            const router = document.getElementById('router-node');
+            const spinner = document.getElementById('router-spinner');
+            const status = document.getElementById('router-status');
+            const log = document.getElementById('trace-log');
+            
+            // Log Input
+            let queryText = "";
+            if(routeId === 'code') queryText = "Write a Python script to scrape a website";
+            if(routeId === 'support') queryText = "My order #8922 arrived damaged yesterday";
+            if(routeId === 'rag') queryText = "What is our company policy on remote work?";
+            if(routeId === 'chat') queryText = "Tell me a joke about a programmer";
+
+            appendLog(`<span class="text-slate-400">Incoming User Query:</span> <span class="text-white">"${queryText}"</span>`);
+
+            // 1. Simulate Router Processing
+            router.classList.add('border-indigo-400', 'shadow-[0_0_40px_rgba(99,102,241,0.5)]');
+            spinner.classList.remove('hidden');
+            status.innerText = "Classifying Intent...";
+            status.classList.add('text-indigo-200');
+            
+            appendLog(`<span class="text-indigo-400">System:</span> RoutingEngine evaluating semantic embeddings...`);
+
+            await delay(800); // Simulate API latency
+
+            // 2. Determine and Animate Route
+            spinner.classList.add('hidden');
+            status.innerText = `Route Match: [${routeId.toUpperCase()}]`;
+            
+            appendLog(`<span class="text-indigo-400">System:</span> Intent classified with 98% confidence.`);
+            appendLog(`<span class="text-indigo-400">System:</span> Forwarding context to <span class="text-white font-bold">${routeId.toUpperCase()}_AGENT</span>...`);
+
+            const path = document.getElementById(`path-${routeId}`);
+            path.classList.add('active', `active-${routeId}`);
+
+            // Dim other agents
+            const agents = ['code', 'support', 'rag', 'chat'];
+            agents.forEach(agent => {
+                if(agent !== routeId) {
+                    document.getElementById(`agent-${agent}`).classList.add('dimmed');
+                }
+            });
+
+            await delay(400); // Path travel time
+
+            // 3. Activate Target Agent
+            const targetAgent = document.getElementById(`agent-${routeId}`);
+            targetAgent.classList.remove('dimmed');
+            targetAgent.classList.add(`active-${routeId}`);
+
+            appendLog(`<span class="text-emerald-400">Success:</span> Payload received by target agent. Executing toolset... <span class="typing-cursor"></span>`);
+
+            isRouting = false;
+        }
+
+        function resetVisuals() {
+            // Reset Router
+            const router = document.getElementById('router-node');
+            router.classList.remove('border-indigo-400', 'shadow-[0_0_40px_rgba(99,102,241,0.5)]');
+            document.getElementById('router-status').innerText = "Waiting for input...";
+            document.getElementById('router-status').classList.remove('text-indigo-200');
+
+            // Reset Paths
+            const agents = ['code', 'support', 'rag', 'chat'];
+            agents.forEach(agent => {
+                const path = document.getElementById(`path-${agent}`);
+                path.className = 'route-path'; // remove active classes
+                
+                const card = document.getElementById(`agent-${agent}`);
+                card.className = 'agent-card bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col items-center text-center';
+            });
+        }
+
+        function resetSimulation() {
+            if(isRouting) return;
+            resetVisuals();
+            document.getElementById('trace-log').innerHTML = `<div class="text-slate-600 italic">System initialized. Awaiting user input to determine routing path...</div>`;
+        }
+
+        function appendLog(htmlContent) {
+            const log = document.getElementById('trace-log');
+            
+            // Remove previous typing cursor
+            const prevCursor = log.querySelector('.typing-cursor');
+            if (prevCursor) prevCursor.classList.remove('typing-cursor');
+
+            const entry = document.createElement('div');
+            entry.className = "mb-2 animate-fade-in-up text-xs";
+            entry.style.animationDuration = "0.3s";
+            entry.innerHTML = htmlContent;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>

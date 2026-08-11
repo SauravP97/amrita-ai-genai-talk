@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agents vs Workflows | AI Engineering Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+                        'data-flow': 'dataFlow 1s linear infinite',
+                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        'fadeInUp': {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        'dataFlow': {
+                            '0%': { strokeDashoffset: '24' },
+                            '100%': { strokeDashoffset: '0' },
+                        },
+                        'pulseGlow': {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0.5' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617; /* slate-950 */
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 1); }
+
+        /* Node Styling */
+        .node {
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 10;
+        }
+
+        .node.active-wf {
+            border-color: rgba(56, 189, 248, 0.8);
+            box-shadow: 0 0 20px -5px rgba(56, 189, 248, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .node.active-agent {
+            border-color: rgba(16, 185, 129, 0.8);
+            box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.5);
+            transform: scale(1.05);
+        }
+
+        .node.done {
+            opacity: 0.7;
+            border-color: rgba(100, 116, 139, 0.5);
+        }
+
+        /* SVG Paths */
+        .svg-connector {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .connection-path {
+            stroke: rgba(100, 116, 139, 0.3);
+            stroke-width: 2;
+            fill: none;
+            transition: all 0.3s ease;
+        }
+
+        .connection-path.active-wf {
+            stroke: rgba(56, 189, 248, 0.6);
+            stroke-width: 3;
+            stroke-dasharray: 8 4;
+            animation: dataFlow 0.5s linear infinite;
+        }
+
+        .connection-path.active-agent {
+            stroke: rgba(16, 185, 129, 0.6);
+            stroke-width: 3;
+            stroke-dasharray: 8 4;
+            animation: dataFlow 0.5s linear infinite;
+        }
+
+        /* Agent brain pulse */
+        .brain-pulse::after {
+            content: '';
+            position: absolute;
+            top: -4px; left: -4px; right: -4px; bottom: -4px;
+            border-radius: inherit;
+            border: 2px solid rgba(16, 185, 129, 0);
+            transition: all 0.3s ease;
+        }
+        .node.thinking .brain-pulse::after {
+            border-color: rgba(16, 185, 129, 0.6);
+            animation: pulseGlow 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-indigo-500/30">
+
+    <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-[0%] left-[-10%] w-[50%] h-[50%] rounded-full bg-sky-900/10 blur-[150px] mix-blend-screen"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-900/10 blur-[120px] mix-blend-screen"></div>
+    </div>
+
+    <nav class="relative z-50 w-full px-6 py-4 flex items-center justify-between glass-panel border-b-0 border-b-white/5 sticky top-0">
+        <div class="flex items-center gap-2 text-indigo-400 font-bold tracking-tight text-xl">
+            <i data-lucide="git-branch-plus" class="w-6 h-6"></i> System_Architecture
+        </div>
+        <div class="hidden md:flex gap-6 text-sm font-medium text-slate-400">
+            <a href="#definition" class="hover:text-white transition-colors">1. Definitions</a>
+            <a href="#simulation" class="hover:text-white transition-colors">2. Interactive Simulation</a>
+            <a href="#comparison" class="hover:text-white transition-colors">3. The Breakdown</a>
+        </div>
+    </nav>
+
+    <main class="relative z-10 flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-24">
+        
+        <section id="definition" class="text-center pt-8 pb-4 opacity-0 animate-fade-in-up">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-indigo-300 text-xs font-semibold tracking-wide mb-6 uppercase shadow-[0_0_15px_rgba(99,102,241,0.15)] border border-indigo-500/20">
+                <i data-lucide="scale" class="w-4 h-4"></i> Control Flow
+            </div>
+            <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6">
+                <span class="text-sky-400">Workflows</span> vs. <span class="text-emerald-400">Agents</span>
+            </h1>
+            <p class="text-lg text-slate-400 font-light max-w-3xl mx-auto leading-relaxed">
+                Not every AI application is an "Agent." The fundamental difference lies in <strong>who writes the rules</strong>. If your code defines the path, it's a Workflow. If the LLM dynamically decides the path, it's an Agent.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12 max-w-4xl mx-auto text-left">
+                <!-- Workflow Def -->
+                <div class="glass-panel p-6 rounded-2xl border border-sky-900/50">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-2 bg-sky-900/30 rounded-lg text-sky-400 border border-sky-700/50"><i data-lucide="git-commit" class="w-5 h-5"></i></div>
+                        <h3 class="text-xl font-bold text-white">The Workflow (Pipeline)</h3>
+                    </div>
+                    <p class="text-slate-400 text-sm leading-relaxed mb-4">
+                        A predefined sequence of steps. The LLM acts as a specific processing node within a hardcoded graph (DAG). The control flow is deterministic and predictable.
+                    </p>
+                    <div class="bg-slate-900 p-3 rounded border border-slate-800 text-xs font-mono text-sky-300">
+                        Code controls the flow -> LLM executes a task.
+                    </div>
+                </div>
+
+                <!-- Agent Def -->
+                <div class="glass-panel p-6 rounded-2xl border border-emerald-900/50">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-2 bg-emerald-900/30 rounded-lg text-emerald-400 border border-emerald-700/50"><i data-lucide="bot" class="w-5 h-5"></i></div>
+                        <h3 class="text-xl font-bold text-white">The Agent</h3>
+                    </div>
+                    <p class="text-slate-400 text-sm leading-relaxed mb-4">
+                        An autonomous system where the LLM is the orchestration engine. It receives a goal, reasons about it, picks tools, observes results, and plans its next step dynamically in a loop.
+                    </p>
+                    <div class="bg-slate-900 p-3 rounded border border-slate-800 text-xs font-mono text-emerald-300">
+                        LLM controls the flow -> Code executes the tools.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="simulation" class="scroll-mt-24 opacity-0 animate-fade-in-up" style="animation-delay: 0.2s;">
+            <div class="glass-panel rounded-2xl border border-slate-700/50 shadow-2xl p-6 md:p-8 relative overflow-hidden">
+                
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-white mb-2">The Task: Financial Research</h2>
+                    <p class="text-sm text-slate-400">"Get the latest AAPL stock price, calculate a 10% safety margin, and save it to the database."</p>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="flex justify-center gap-4 mb-12 z-20 relative">
+                    <button id="btn-wf" onclick="runSimulation('workflow')" class="px-6 py-3 bg-sky-900/30 hover:bg-sky-900/50 border border-sky-600 rounded-xl text-sm font-semibold text-sky-200 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(56,189,248,0.2)]">
+                        <i data-lucide="play-circle" class="w-4 h-4 text-sky-400"></i> Run as Workflow
+                    </button>
+                    <button id="btn-agent" onclick="runSimulation('agent')" class="px-6 py-3 bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-600 rounded-xl text-sm font-semibold text-emerald-200 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                        <i data-lucide="cpu" class="w-4 h-4 text-emerald-400"></i> Run as Agent
+                    </button>
+                    <button onclick="resetSimulation()" class="px-4 py-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 transition-all">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Architecture Container -->
+                <div class="relative w-full min-h-[450px] flex flex-col md:flex-row items-stretch justify-between gap-8 md:gap-4 mt-8" id="sim-container">
+                    
+                    <!-- SVG Connections -->
+                    <svg class="svg-connector" id="sim-svg" preserveAspectRatio="none">
+                        <!-- Workflow Paths -->
+                        <path id="path-wf-1" class="connection-path" d="" />
+                        <path id="path-wf-2" class="connection-path" d="" />
+                        
+                        <!-- Agent Paths (Bidirectional to tools) -->
+                        <path id="path-ag-1" class="connection-path" d="" />
+                        <path id="path-ag-2" class="connection-path" d="" />
+                        <path id="path-ag-3" class="connection-path" d="" />
+                    </svg>
+
+                    <!-- Left Column: Workflow Nodes (Static) -->
+                    <div class="w-full md:w-1/3 flex flex-col items-center justify-between gap-6 z-10" id="wf-column">
+                        <div class="text-xs font-mono text-sky-400 uppercase tracking-widest mb-2 opacity-50 text-center w-full">Workflow (Hardcoded)</div>
+                        
+                        <div id="wf-node-1" class="node bg-slate-900 border-2 border-slate-700 rounded-xl p-4 w-56 text-center">
+                            <i data-lucide="globe" class="w-6 h-6 text-slate-400 mx-auto mb-2"></i>
+                            <div class="text-sm font-bold text-slate-200">Step 1: Fetch Price</div>
+                            <div class="text-[10px] text-slate-500 font-mono mt-1">API Call -> $150</div>
+                        </div>
+
+                        <div id="wf-node-2" class="node bg-slate-900 border-2 border-slate-700 rounded-xl p-4 w-56 text-center">
+                            <i data-lucide="brain-circuit" class="w-6 h-6 text-slate-400 mx-auto mb-2"></i>
+                            <div class="text-sm font-bold text-slate-200">Step 2: LLM Process</div>
+                            <div class="text-[10px] text-slate-500 font-mono mt-1">Extract 10% -> 15</div>
+                        </div>
+
+                        <div id="wf-node-3" class="node bg-slate-900 border-2 border-slate-700 rounded-xl p-4 w-56 text-center">
+                            <i data-lucide="database" class="w-6 h-6 text-slate-400 mx-auto mb-2"></i>
+                            <div class="text-sm font-bold text-slate-200">Step 3: Save to DB</div>
+                            <div class="text-[10px] text-slate-500 font-mono mt-1">SQL Insert</div>
+                        </div>
+                    </div>
+
+                    <!-- Center Column: Agent Brain -->
+                    <div class="w-full md:w-1/3 flex flex-col items-center justify-center z-10 opacity-50 grayscale transition-all duration-500" id="agent-column">
+                        <div class="text-xs font-mono text-emerald-400 uppercase tracking-widest mb-6 text-center">Autonomous Agent</div>
+                        
+                        <div id="agent-brain" class="node bg-emerald-950 border-2 border-emerald-700 rounded-2xl p-6 w-64 text-center shadow-lg brain-pulse relative">
+                            <i data-lucide="cpu" class="w-10 h-10 text-emerald-400 mx-auto mb-3"></i>
+                            <div class="text-base font-bold text-emerald-100">LLM Orchestrator</div>
+                            
+                            <!-- Dynamic thought bubble -->
+                            <div id="agent-thought" class="mt-4 p-3 bg-slate-900 border border-emerald-900/50 rounded-lg text-xs text-slate-300 font-mono text-left h-24 overflow-hidden relative">
+                                <span class="text-slate-500 italic">Awaiting prompt...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Agent Tools -->
+                    <div class="w-full md:w-1/3 flex flex-col items-center justify-between gap-6 z-10 opacity-50 grayscale transition-all duration-500" id="tools-column">
+                        <div class="text-xs font-mono text-emerald-400 uppercase tracking-widest mb-2 text-center w-full">Toolbelt</div>
+                        
+                        <div id="tool-search" class="node bg-slate-900 border border-slate-700 rounded-lg p-3 w-48 flex items-center gap-3">
+                            <div class="bg-blue-900/30 p-2 rounded text-blue-400"><i data-lucide="globe" class="w-4 h-4"></i></div>
+                            <div class="text-xs font-bold text-slate-200">Web Search API</div>
+                        </div>
+
+                        <div id="tool-calc" class="node bg-slate-900 border border-slate-700 rounded-lg p-3 w-48 flex items-center gap-3">
+                            <div class="bg-purple-900/30 p-2 rounded text-purple-400"><i data-lucide="calculator" class="w-4 h-4"></i></div>
+                            <div class="text-xs font-bold text-slate-200">Calculator</div>
+                        </div>
+
+                        <div id="tool-db" class="node bg-slate-900 border border-slate-700 rounded-lg p-3 w-48 flex items-center gap-3">
+                            <div class="bg-orange-900/30 p-2 rounded text-orange-400"><i data-lucide="database" class="w-4 h-4"></i></div>
+                            <div class="text-xs font-bold text-slate-200">Database API</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="mt-8 bg-black border border-slate-800 rounded-xl overflow-hidden z-20 relative shadow-lg">
+                    <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="terminal-square" class="w-4 h-4 text-slate-500"></i>
+                            <span class="text-xs font-mono text-slate-500">Execution_Trace</span>
+                        </div>
+                        <span id="trace-mode" class="text-[10px] uppercase font-mono text-slate-500">Idle</span>
+                    </div>
+                    <div class="p-4 font-mono text-sm h-48 overflow-y-auto bg-[#0d1117]" id="trace-log">
+                        <div class="text-slate-600 italic">Select an execution mode to see the trace...</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="comparison" class="scroll-mt-24 border-t border-slate-800/50 pt-16 pb-20 opacity-0 animate-fade-in-up" style="animation-delay: 0.4s;">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-white mb-4">When to use which?</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto text-sm leading-relaxed">
+                    AI Engineering is moving towards a hybrid approach. You don't want agents for everything (they hallucinate and loop), and you don't want workflows for everything (they break on edge cases).
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                <!-- Use Workflow -->
+                <div class="glass-panel p-6 rounded-xl border border-sky-900/30">
+                    <h3 class="font-bold text-lg text-sky-400 mb-4 flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-5 h-5"></i> Use Workflows When:
+                    </h3>
+                    <ul class="text-sm text-slate-300 space-y-3">
+                        <li class="flex items-start gap-2"><div class="mt-1 w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0"></div> The task is repetitive and highly predictable.</li>
+                        <li class="flex items-start gap-2"><div class="mt-1 w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0"></div> Latency and cost are critical (agents make multiple expensive LLM calls).</li>
+                        <li class="flex items-start gap-2"><div class="mt-1 w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0"></div> You need 100% guarantee on the order of execution.</li>
+                        <li class="flex items-start gap-2"><div class="mt-1 w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0"></div> Example: Summarizing daily news and sending an email at 8 AM.</li>
+                    </ul>
+                </div>
+
+                <!-- Use Agent -->
+                <div class="glass-panel p-6 rounded-xl border border-emerald-900/30">
+                    <h3 class="font-bold text-lg text-emerald-400 mb-4 flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-5 h-5"></i> Use Agents When:
+                    </h3>
+                    <ul class="text-sm text-slate-300 space-y-3">
+                        <li class="flex items-start gap-2"><div class="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></div> The path to the goal is ambiguous or requires research.</li>
+                        <li class="flex items-start gap-2"><div class="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></div> Error recovery is needed (e.g., if a search fails, try a different query).</li>
+                        <li class="flex items-start gap-2"><div class="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></div> The task requires dynamically choosing between dozens of different tools.</li>
+                        <li class="flex items-start gap-2"><div class="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></div> Example: "Find me the best laptop under $1000 that has 32GB RAM."</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Initialize Icons
+        window.onload = () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            
+            // Intersection Observer for fade-in animations
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.animationPlayState = 'running';
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.animate-fade-in-up').forEach(el => {
+                el.style.animationPlayState = 'paused';
+                observer.observe(el);
+            });
+
+            // Initial SVG setup
+            drawConnections();
+            window.addEventListener('resize', drawConnections);
+        };
+
+        let isSimulating = false;
+
+        // Draw the static SVG paths that we will animate later
+        function drawConnections() {
+            const svg = document.getElementById('sim-svg');
+            const container = document.getElementById('sim-container');
+            
+            if(!svg || !container) return;
+            
+            svg.setAttribute('width', container.offsetWidth);
+            svg.setAttribute('height', container.offsetHeight);
+
+            const getCenter = (el) => {
+                const rect = el.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                return {
+                    x: rect.left - containerRect.left + (rect.width / 2),
+                    y: rect.top - containerRect.top + (rect.height / 2)
+                };
+            };
+            const getLeft = (el) => {
+                const rect = el.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                return {
+                    x: rect.left - containerRect.left,
+                    y: rect.top - containerRect.top + (rect.height / 2)
+                };
+            }
+            const getRight = (el) => {
+                const rect = el.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                return {
+                    x: rect.right - containerRect.left,
+                    y: rect.top - containerRect.top + (rect.height / 2)
+                };
+            }
+
+            // Workflow Paths (Node 1 -> 2 -> 3)
+            const w1 = getCenter(document.getElementById('wf-node-1'));
+            const w2 = getCenter(document.getElementById('wf-node-2'));
+            const w3 = getCenter(document.getElementById('wf-node-3'));
+            
+            document.getElementById('path-wf-1').setAttribute('d', `M ${w1.x} ${w1.y + 40} L ${w2.x} ${w2.y - 40}`);
+            document.getElementById('path-wf-2').setAttribute('d', `M ${w2.x} ${w2.y + 40} L ${w3.x} ${w3.y - 40}`);
+
+            // Agent Paths (Brain -> Tools)
+            const brain = getRight(document.getElementById('agent-brain'));
+            const t1 = getLeft(document.getElementById('tool-search'));
+            const t2 = getLeft(document.getElementById('tool-calc'));
+            const t3 = getLeft(document.getElementById('tool-db'));
+
+            document.getElementById('path-ag-1').setAttribute('d', `M ${brain.x} ${brain.y - 20} C ${brain.x + 40} ${brain.y - 20}, ${t1.x - 40} ${t1.y}, ${t1.x} ${t1.y}`);
+            document.getElementById('path-ag-2').setAttribute('d', `M ${brain.x} ${brain.y} L ${t2.x} ${t2.y}`);
+            document.getElementById('path-ag-3').setAttribute('d', `M ${brain.x} ${brain.y + 20} C ${brain.x + 40} ${brain.y + 20}, ${t3.x - 40} ${t3.y}, ${t3.x} ${t3.y}`);
+        }
+
+        async function runSimulation(mode) {
+            if (isSimulating) return;
+            isSimulating = true;
+            resetVisuals();
+
+            const logPanel = document.getElementById('trace-log');
+            logPanel.innerHTML = ''; // clear
+
+            if (mode === 'workflow') {
+                document.getElementById('trace-mode').innerText = "MODE: WORKFLOW (DETERMINISTIC)";
+                document.getElementById('trace-mode').className = "text-[10px] uppercase font-mono text-sky-400 font-bold";
+                
+                // Dim Agent stuff
+                document.getElementById('agent-column').classList.add('opacity-30', 'grayscale');
+                document.getElementById('tools-column').classList.add('opacity-30', 'grayscale');
+                document.getElementById('wf-column').classList.remove('opacity-50');
+
+                await runWorkflowSim();
+            } else {
+                document.getElementById('trace-mode').innerText = "MODE: AGENT (AUTONOMOUS LOOP)";
+                document.getElementById('trace-mode').className = "text-[10px] uppercase font-mono text-emerald-400 font-bold";
+                
+                // Dim Workflow stuff
+                document.getElementById('wf-column').classList.add('opacity-30', 'grayscale');
+                
+                // Activate Agent stuff
+                document.getElementById('agent-column').classList.remove('opacity-50', 'grayscale');
+                document.getElementById('tools-column').classList.remove('opacity-50', 'grayscale');
+
+                await runAgentSim();
+            }
+
+            isSimulating = false;
+        }
+
+        async function runWorkflowSim() {
+            log(`<span class="text-sky-300 font-bold">INFO</span>: Starting DAG Execution (3 nodes)`);
+            
+            // Node 1
+            const n1 = document.getElementById('wf-node-1');
+            const p1 = document.getElementById('path-wf-1');
+            n1.classList.add('active-wf');
+            log(`[Node 1]: Executing hardcoded API call to FinancialsAPI...`);
+            await delay(1200);
+            log(`[Node 1]: Success. Response: {"price": 150}`);
+            n1.classList.remove('active-wf');
+            n1.classList.add('done');
+            
+            // Move to 2
+            p1.classList.add('active-wf');
+            await delay(600);
+            p1.classList.remove('active-wf');
+
+            // Node 2
+            const n2 = document.getElementById('wf-node-2');
+            const p2 = document.getElementById('path-wf-2');
+            n2.classList.add('active-wf');
+            log(`[Node 2]: LLM Processing. Prompt: "Extract 10% of 150"`);
+            await delay(1500);
+            log(`[Node 2]: LLM Output: 15`);
+            n2.classList.remove('active-wf');
+            n2.classList.add('done');
+
+            // Move to 3
+            p2.classList.add('active-wf');
+            await delay(600);
+            p2.classList.remove('active-wf');
+
+            // Node 3
+            const n3 = document.getElementById('wf-node-3');
+            n3.classList.add('active-wf');
+            log(`[Node 3]: Executing SQL Insert query...`);
+            await delay(1000);
+            log(`[Node 3]: DB Commit successful.`);
+            n3.classList.remove('active-wf');
+            n3.classList.add('done');
+
+            log(`<span class="text-sky-400 font-bold">SUCCESS</span>: Workflow completed sequentially.`);
+        }
+
+        async function runAgentSim() {
+            const brain = document.getElementById('agent-brain');
+            const thoughtBox = document.getElementById('agent-thought');
+            const paths = {
+                search: document.getElementById('path-ag-1'),
+                calc: document.getElementById('path-ag-2'),
+                db: document.getElementById('path-ag-3')
+            };
+            const tools = {
+                search: document.getElementById('tool-search'),
+                calc: document.getElementById('tool-calc'),
+                db: document.getElementById('tool-db')
+            };
+
+            log(`<span class="text-emerald-300 font-bold">INFO</span>: Initializing ReAct Agent Loop`);
+            brain.classList.add('thinking');
+
+            // Step 1: Search
+            await setThought(thoughtBox, "I need to find the current stock price of AAPL.");
+            log(`<span class="text-purple-400">Thought</span>: Need AAPL price.`);
+            await delay(1000);
+            
+            log(`<span class="text-blue-400">Action</span>: ToolCall(WebSearchAPI, "AAPL stock price")`);
+            await triggerTool(paths.search, tools.search);
+            log(`<span class="text-orange-400">Observation</span>: "Apple Inc. (AAPL) current price is 150.00 USD."`);
+            await delay(1000);
+
+            // Step 2: Math
+            await setThought(thoughtBox, "I have the price ($150). Now I need to calculate a 10% safety margin.");
+            log(`<span class="text-purple-400">Thought</span>: Calculate 10% of 150.`);
+            await delay(1000);
+
+            log(`<span class="text-blue-400">Action</span>: ToolCall(Calculator, "150 * 0.10")`);
+            await triggerTool(paths.calc, tools.calc);
+            log(`<span class="text-orange-400">Observation</span>: "15"`);
+            await delay(1000);
+
+            // Step 3: DB
+            await setThought(thoughtBox, "I have the margin (15). I need to save this to the database.");
+            log(`<span class="text-purple-400">Thought</span>: Save margin 15 to DB.`);
+            await delay(1000);
+
+            log(`<span class="text-blue-400">Action</span>: ToolCall(DatabaseAPI, save(AAPL, 15))`);
+            await triggerTool(paths.db, tools.db);
+            log(`<span class="text-orange-400">Observation</span>: "Record inserted successfully."`);
+            await delay(1000);
+
+            // Finish
+            await setThought(thoughtBox, "Task complete. I will return the final response to the user.");
+            log(`<span class="text-purple-400">Thought</span>: Goal achieved.`);
+            brain.classList.remove('thinking');
+            log(`<span class="text-emerald-400 font-bold">SUCCESS</span>: Agent loop terminated successfully.`);
+        }
+
+        async function triggerTool(path, tool) {
+            path.classList.add('active-agent');
+            await delay(400);
+            tool.classList.add('active-agent');
+            await delay(600);
+            tool.classList.remove('active-agent');
+            path.classList.remove('active-agent');
+            // Simulate data flowing back
+            path.style.animationDirection = 'reverse';
+            path.classList.add('active-agent');
+            await delay(400);
+            path.classList.remove('active-agent');
+            path.style.animationDirection = 'normal';
+        }
+
+        async function setThought(box, text) {
+            box.innerHTML = `<span class="text-emerald-300 opacity-0 transition-opacity duration-300" id="curr-thought">"${text}"</span>`;
+            setTimeout(() => document.getElementById('curr-thought').classList.remove('opacity-0'), 50);
+        }
+
+        function resetVisuals() {
+            // Reset Workflow
+            const wfNodes = [1,2,3].map(i => document.getElementById(`wf-node-${i}`));
+            wfNodes.forEach(n => { n.classList.remove('active-wf', 'done'); });
+            [1,2].forEach(i => document.getElementById(`path-wf-${i}`).classList.remove('active-wf'));
+            document.getElementById('wf-column').classList.remove('opacity-30', 'grayscale');
+
+            // Reset Agent
+            document.getElementById('agent-brain').classList.remove('thinking');
+            document.getElementById('agent-thought').innerHTML = '<span class="text-slate-500 italic">Awaiting prompt...</span>';
+            const tools = ['search', 'calc', 'db'];
+            tools.forEach(t => {
+                document.getElementById(`tool-${t}`).classList.remove('active-agent');
+                document.getElementById(`path-ag-${tools.indexOf(t)+1}`).classList.remove('active-agent');
+            });
+            document.getElementById('agent-column').classList.add('opacity-50', 'grayscale');
+            document.getElementById('tools-column').classList.add('opacity-50', 'grayscale');
+
+            // Reset trace header
+            document.getElementById('trace-mode').innerText = "Idle";
+            document.getElementById('trace-mode').className = "text-[10px] uppercase font-mono text-slate-500";
+            document.getElementById('trace-log').innerHTML = '<div class="text-slate-600 italic">Select an execution mode to see the trace...</div>';
+        }
+
+        function log(message) {
+            const logContainer = document.getElementById('trace-log');
+            // Remove initial italic text if present
+            if(logContainer.querySelector('.italic.text-slate-600')) {
+                logContainer.innerHTML = '';
+            }
+            const entry = document.createElement('div');
+            entry.className = "mb-1 animate-fade-in-up text-xs";
+            entry.innerHTML = `<span class="text-slate-500">[${new Date().toISOString().split('T')[1].slice(0,-1)}]</span> ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>
